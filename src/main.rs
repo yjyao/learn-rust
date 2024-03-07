@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate assert_float_eq;
+
 fn hello_world() {
     println!("Hello, world!");
     // `println!` is a macro.
@@ -297,9 +300,9 @@ fn test_geometry() {
     assert_eq!(magnitude(&[0.0, 1.0, 0.0]), 1.0);
 
     let mut v = [1.0, 2.0, 9.0];
-    assert!((magnitude(&v) - 9.2).abs() < 0.1);
+    assert_float_relative_eq!(magnitude(&v), 9.2, /*tolarence=*/ 0.1);
     normalize(&mut v);
-    assert!((magnitude(&v) - 1.0).abs() < 0.1);
+    assert_float_relative_eq!(magnitude(&v), 1.0);
 }
 
 // --------------------------------------------------------------------------------
