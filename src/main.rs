@@ -225,6 +225,13 @@ fn references() {
     let r = &mut b;
     *r = 'x';
     println!("b should be x: {}", b);
+    // NOTE mutable references are exclusive.
+    // So `b` and `*r` cannot both be able to mutate `b`.
+    // The following code will produce an error:
+    // ```
+    // b = 'X';  // Ok. Implying that `r` is dead.
+    // dbg!(*r);  // ERROR: `r` is still alive and also able to mutate `b`.
+    // ```
 }
 
 // --------------------------------------------------------------------------------
@@ -466,6 +473,539 @@ fn exer_elevator_events() {
 
 // --------------------------------------------------------------------------------
 
+fn pattern_matching() {
+    let user_input = 'y';
+    let resp = String::from(match user_input {
+        // Using simple values.
+        'q' => "Quitting",
+        'y' | 'Y' => "Confirm",
+        // Using a range.
+        '0'..='9' => "Number input",
+        // Using a variable binding and a "match guard".
+        key if key.is_lowercase() => "Input is lowercase",
+        // Using a wild card.
+        _ => "Default",
+    });
+    assert_eq!(resp, "Confirm"); // Instead of "Input is lowercase".
+
+    // NOTE: Must exhaust possible patterns to compile.
+    // This won't compile:
+    // ```
+    // match 'x' {
+    //     'a'..='c' => (),
+    // }
+    // ```
+
+    // Unpacking in match patterns.
+    struct Foo {
+        x: u32,
+        y: (u32, u32),
+    }
+    match (Foo { x: 1, y: (2, 3) }) {
+        Foo { x, y: (2, b) } => println!("x = {x}, y = (1, {b})"),
+        Foo { y, .. } => println!("y = {y:?}, other fields were ignored."),
+    }
+
+    #[derive(Debug)]
+    #[allow(unused)]
+    struct Person {
+        name: String,
+        age: u8,
+    }
+    #[allow(unused)]
+    enum FamilyMember {
+        Father(Person),
+        Mother(Person),
+        Me(Person),
+    }
+    match FamilyMember::Mother(Person {
+        name: String::from("Alex"),
+        age: 30,
+    }) {
+        FamilyMember::Father(father) => println!("father is {father:?}"),
+        FamilyMember::Mother(Person { name, .. }) => println!("{name} is the mother"),
+        _ => (),
+    }
+
+    // Shadowing
+    #[allow(unused)]
+    let a = 2;
+    match 3 {
+        // This creates a new temporary variable `a`
+        // that matches any `i32`.
+        // This is NOT the `a` we declared above.
+        a => println!("3 matches a, a = {a}"),
+    }
+    const A: i32 = 2;
+    match 3 {
+        // Constants are captured.
+        // (probably because constants are inlined everywhere?)
+        A => println!("3 does not match A which is 2"),
+        _ => println!("3 goes to default"),
+    }
+}
+
+// --------------------------------------------------------------------------------
+
+fn let_control_flow() {
+    // Common usage: handling `Result` (`Ok`/`Err`) or `Option` (`Some`/`None`) values.
+
+    // if-let
+    const DEFAULT_DURATION: std::time::Duration = std::time::Duration::from_millis(500);
+    fn get_duration(secs: f32) -> std::time::Duration {
+        if let Ok(dur) = std::time::Duration::try_from_secs_f32(secs) {
+            dur
+        } else {
+            DEFAULT_DURATION
+        }
+    }
+    // Valid `secs` value, using 0.8 secs.
+    assert_eq!(get_duration(0.8).as_millis(), 800);
+    // Invalid `secs` value, using default duration.
+    assert_eq!(get_duration(-10.0), DEFAULT_DURATION);
+
+    // while-let
+    let mut name = String::from("Hello World");
+    let mut l_count = 0;
+    while let Some(c) = name.pop() {
+        if c == 'l' {
+            l_count += 1;
+        }
+    }
+    assert_eq!(l_count, 3);
+
+    // direct let-else
+    fn as_hex(maybe_string: Option<String>) -> Result<u32, String> {
+        let Some(s) = maybe_string else {
+            return Err(String::from("got None"));
+        };
+        let Some(first_char) = s.chars().next() else {
+            return Err(String::from("got empty string"));
+        };
+        let Some(digit) = first_char.to_digit(16) else {
+            return Err(String::from("not a hex digit"));
+        };
+        return Ok(digit);
+    }
+    assert_eq!(as_hex(None), Err(String::from("got None")));
+    assert_eq!(as_hex(Some(String::from("foo"))), Ok(15));
+}
+
+// --------------------------------------------------------------------------------
+// Exercise: Expr Eval.
+
+/// An operation to perform on two subexpressions.
+#[derive(Debug)]
+#[allow(unused)]
+enum Operation {
+    Add,
+    Sub,
+    Mul,
+    Div,
+}
+
+/// An expression, in tree form.
+#[derive(Debug)]
+#[allow(unused)]
+enum Expression {
+    /// A binary operation on two subexpressions.
+    Op {
+        op: Operation,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+
+    /// A literal value.
+    Value(i64),
+}
+
+#[allow(unused)]
+fn eval(e: Expression) -> Result<i64, String> {
+    let (op, left, right) = match e {
+        Expression::Value(v) => return Ok(v),
+        Expression::Op { op, left, right } => (op, left, right),
+    };
+    let left = match eval(*left) {
+        Ok(v) => v,
+        err @ Err(_) => return err,
+    };
+    let right = match eval(*right) {
+        Ok(v) => v,
+        err @ Err(_) => return err,
+    };
+    Ok(match op {
+        Operation::Add => left + right,
+        Operation::Sub => left - right,
+        Operation::Mul => left * right,
+        Operation::Div => {
+            if right != 0 {
+                left / right
+            } else {
+                return Err(String::from("division by zero"));
+            }
+        }
+    })
+}
+
+#[test]
+fn test_value() {
+    assert_eq!(eval(Expression::Value(19)), Ok(19));
+}
+
+#[test]
+fn test_sum() {
+    assert_eq!(
+        eval(Expression::Op {
+            op: Operation::Add,
+            left: Box::new(Expression::Value(10)),
+            right: Box::new(Expression::Value(20)),
+        }),
+        Ok(30)
+    );
+}
+
+#[test]
+fn test_recursion() {
+    let term1 = Expression::Op {
+        op: Operation::Mul,
+        left: Box::new(Expression::Value(10)),
+        right: Box::new(Expression::Value(9)),
+    };
+    let term2 = Expression::Op {
+        op: Operation::Mul,
+        left: Box::new(Expression::Op {
+            op: Operation::Sub,
+            left: Box::new(Expression::Value(3)),
+            right: Box::new(Expression::Value(4)),
+        }),
+        right: Box::new(Expression::Value(5)),
+    };
+    assert_eq!(
+        eval(Expression::Op {
+            op: Operation::Add,
+            left: Box::new(term1),
+            right: Box::new(term2),
+        }),
+        Ok(85)
+    );
+}
+
+#[test]
+fn test_error() {
+    assert_eq!(
+        eval(Expression::Op {
+            op: Operation::Div,
+            left: Box::new(Expression::Value(99)),
+            right: Box::new(Expression::Value(0)),
+        }),
+        Err(String::from("division by zero"))
+    );
+}
+
+// --------------------------------------------------------------------------------
+
+fn methods() {
+    #[derive(Debug)]
+    struct Race {
+        name: String,
+        laps: Vec<i32>,
+    }
+    impl Race {
+        // Static method because of lack of the receiver `self`.
+        fn new(name: &str) -> Self {
+            Self {
+                name: String::from(name),
+                laps: Vec::new(),
+            }
+        }
+        // The receiver `self` is short for `self: Self` or `self: Race`.
+        // `Self` is an automatic type alias to `Race`.
+        // Exclusive borrowed read-write access.
+        fn add_lap(&mut self, lap: i32) {
+            self.laps.push(lap);
+        }
+        // Shared borrowed read-only access.
+        fn print_laps(&self) {
+            println!("Recorded {} laps for {}:", self.laps.len(), self.name);
+            for (i, lap) in self.laps.iter().enumerate() {
+                println!("Lap {i}: {lap} sec");
+            }
+        }
+        // Exclusive ownership of self.
+        // Kinda like a destrctor,
+        // unless this method then transfers the ownership away.
+        // `mut self` works similarly except it allows modification to `self`.
+        fn finish(self) {
+            let total: i32 = self.laps.iter().sum();
+            println!("Race {} is finished, total lap time: {}", self.name, total);
+        }
+    }
+
+    let mut race = Race::new("Monaco Grand Prix");
+    race.add_lap(70);
+    race.print_laps();
+    race.add_lap(68);
+    race.print_laps();
+    race.finish();
+    // race.add_lap(42);  // ERROR: `Race::finish` takes the ownership away.
+}
+
+// --------------------------------------------------------------------------------
+
+fn traits() {
+    // Traits are like interfaces.
+    trait Pet {
+        /// Return a sentence from this pet.
+        fn talk(&self) -> String;
+
+        /// Print a string to the terminal greeting this pet.
+        fn greet(&self) {
+            println!("Oh you're a cutie! What's your name? {}", self.talk());
+        }
+    }
+    struct Dog {
+        name: String,
+    }
+    // `impl` block is required to register `Dog` as a `Pet`.
+    impl Pet for Dog {
+        fn talk(&self) -> String {
+            format!("Woof, my name is {}!", self.name)
+        }
+    }
+    let fido = Dog {
+        name: String::from("Fido"),
+    };
+    fido.greet();
+
+    // We can use associated types
+    // to allow the implementer to choose the type of the output,
+    // instead of the caller.
+    trait Multiply {
+        type Output; // This is the "associated type", or "output type".
+        fn multiply(&self, other: &Self) -> Self::Output;
+    }
+
+    #[derive(Debug)]
+    struct Meters(i32);
+    #[derive(Debug)]
+    struct MetersSquared(i32);
+
+    impl Multiply for Meters {
+        type Output = MetersSquared;
+        fn multiply(&self, other: &Self) -> Self::Output {
+            MetersSquared(self.0 * other.0)
+        }
+    }
+
+    println!("{:?}", Meters(10).multiply(&Meters(20)));
+
+    //
+    #[derive(Debug, Clone, Default)]
+    #[allow(unused)]
+    struct Player {
+        name: String,
+        strength: u8,
+        hit_points: u8,
+    }
+    let p1 = Player::default(); // Provided by the `Default` trait.
+    let mut p2 = p1.clone(); // Provided by the `Clone` trait.
+    p2.name = String::from("EldurScrollz");
+    // `Debug` trait adds support for printing with `{:?}`.
+    println!("{:?} vs {:?}", p1, p2);
+}
+
+// --------------------------------------------------------------------------------
+// Exercise: Generic Logger
+
+pub trait Logger {
+    /// Log a message at the given verbosity level.
+    fn log(&mut self, verbosity: u8, message: impl std::fmt::Display);
+}
+
+#[derive(Default)]
+struct StringLogger {
+    buffer: String,
+}
+
+impl Logger for StringLogger {
+    fn log(&mut self, verbosity: u8, message: impl std::fmt::Display) {
+        self.buffer
+            .push_str(&format!("verbosity={verbosity}: {message}\n"));
+    }
+}
+
+/// Only log messages up to the given verbosity level.
+struct VerbosityFilter<L: Logger> {
+    max_verbosity: u8,
+    inner: L,
+}
+
+impl<L: Logger> Logger for VerbosityFilter<L> {
+    fn log(&mut self, verbosity: u8, message: impl std::fmt::Display) {
+        if verbosity < self.max_verbosity {
+            self.inner.log(verbosity, message);
+        }
+    }
+}
+
+#[test]
+fn test_verbosity_filter() {
+    fn do_things(logger: &mut impl Logger) {
+        logger.log(5, "FYI");
+        logger.log(2, "Uhoh");
+    }
+
+    let mut logger = VerbosityFilter {
+        max_verbosity: 3,
+        inner: StringLogger::default(),
+    };
+    do_things(&mut logger);
+    assert_eq!(logger.inner.buffer, String::from("verbosity=2: Uhoh\n"));
+}
+
+// --------------------------------------------------------------------------------
+
+fn generics() {
+    // Generic functions.
+    fn pick<T>(n: i32, even: T, odd: T) -> T {
+        if n % 2 == 0 {
+            even
+        } else {
+            odd
+            // even + old  // ERROR: We don't know if `T` supports this.
+        }
+    }
+    assert_eq!(pick(97, 222, 333), 333);
+    assert_eq!(pick(28, ("dog", 1), ("cat", 2)), ("dog", 1));
+    // ^ These are converted to non-generic code at compile time,
+    // so running generic function are as fast as running regular functions.
+
+    #[derive(Debug)]
+    struct Point<T> {
+        x: T,
+        y: T,
+    }
+    impl<T> Point<T> {
+        fn coords(&self) -> (&T, &T) {
+            (&self.x, &self.y)
+        }
+    }
+    assert_eq!(format!("{:?}", Point { x: 5, y: 10 }.coords()), "(5, 10)");
+    assert_eq!(
+        format!(
+            "{:?}",
+            Point {
+                x: "Hello",
+                y: "World"
+            }
+            .coords()
+        ),
+        "(\"Hello\", \"World\")"
+    );
+
+    // Generic type for traits.
+    {
+        #[allow(unused)]
+        fn duplicate<T: Clone>(a: T) -> (T, T) {
+            (a.clone(), a.clone())
+        }
+    }
+    // Multiple traits.
+    {
+        #[allow(unused)]
+        fn duplicate<T: Clone + std::fmt::Debug>(a: T) -> (T, String) {
+            (a.clone(), format!("{a:?}"))
+        }
+    }
+    // Alternatively specify trait templates with a `where` clause.
+    {
+        #[allow(unused)]
+        fn duplicate<T>(a: T) -> (T, T)
+        where
+            T: Clone,
+            // `where` clause also lets you add some constraints,
+            // such as `Option<T>: MaybePet`.
+        {
+            (a.clone(), a.clone())
+        }
+    }
+    // Alternatively specify trait templates with `impl Trait`.
+    {
+        #[allow(unused)]
+        fn add_10(x: impl Into<i32>) -> i32 {
+            x.into() + 10
+        }
+    }
+    // Same as:
+    {
+        #[allow(unused)]
+        fn add_10<T: Into<i32>>(x: T) -> i32 {
+            x.into() + 10
+        }
+    }
+    // `impl Trait` can be the return type.
+    // This allows hiding the real return type.
+    #[allow(unused)]
+    fn pair_of(x: u32) -> impl std::fmt::Debug {
+        (x + 1, x - 1)
+    }
+}
+
+// --------------------------------------------------------------------------------
+// Exercise: Generic `min`
+
+trait LessThan {
+    /// Return `true` if `self` is less than `other`.
+    fn less_than(&self, other: &Self) -> bool;
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+struct Citation {
+    author: &'static str,
+    year: u32,
+}
+
+impl LessThan for Citation {
+    fn less_than(&self, other: &Self) -> bool {
+        if self.author < other.author {
+            true
+        } else if self.author > other.author {
+            false
+        } else {
+            self.year < other.year
+        }
+    }
+}
+
+fn min<T: LessThan + Clone>(a: T, b: T) -> T {
+    if a.less_than(&b) {
+        a
+    } else {
+        b
+    }
+}
+
+#[test]
+fn test_min() {
+    let cit1 = Citation {
+        author: "Shapiro",
+        year: 2011,
+    };
+    let cit2 = Citation {
+        author: "Baumann",
+        year: 2010,
+    };
+    let cit3 = Citation {
+        author: "Baumann",
+        year: 2019,
+    };
+    assert_eq!(min(cit1, cit2), cit2);
+    assert_eq!(min(cit2, cit3), cit2);
+    assert_eq!(min(cit1, cit3), cit3);
+}
+
+// --------------------------------------------------------------------------------
+
 fn main() {
     // Day 1:
     hello_world();
@@ -479,4 +1019,9 @@ fn main() {
     strings();
     defining_types();
     exer_elevator_events();
+    pattern_matching();
+    let_control_flow();
+    methods();
+    traits();
+    generics();
 }
