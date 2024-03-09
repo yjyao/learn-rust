@@ -1229,9 +1229,9 @@ fn std_types() {
     // `HashMap`
     use std::collections::HashMap;
     let mut page_counts = HashMap::new();
-    page_counts.insert("Adventures of Huckleberry Finn".to_string(), 207);
-    page_counts.insert("Grimms' Fairy Tales".to_string(), 751);
-    page_counts.insert("Pride and Prejudice".to_string(), 303);
+    page_counts.insert(String::from("Adventures of Huckleberry Finn"), 207);
+    page_counts.insert(String::from("Grimms' Fairy Tales"), 751);
+    page_counts.insert(String::from("Pride and Prejudice"), 303);
     // ^ Noticed the `to_string`? NOTE Do NOT use `&str` as key!
 
     assert_eq!(page_counts.len(), 3);
@@ -1242,7 +1242,7 @@ fn std_types() {
         None => assert!(true),
     }
 
-    let page_count: &mut i32 = page_counts.entry("三国演义".to_string()).or_insert(0);
+    let page_count: &mut i32 = page_counts.entry(String::from("三国演义")).or_insert(0);
     *page_count += 1;
     assert_eq!(page_counts.get("三国演义").unwrap(), &1);
     let count = page_counts.get("1984").unwrap_or(&336);
@@ -1250,8 +1250,8 @@ fn std_types() {
     assert_eq!(page_counts.contains_key("1984"), false);
 
     let prices = HashMap::from([
-        ("Apple".to_string(), 8), //
-        ("Banana".to_string(), 5),
+        (String::from("Apple"), 8), //
+        (String::from("Banana"), 5),
     ]);
     let mut fruits: Vec<_> = prices.keys().collect();
     fruits.sort(); // `keys()` returns in arbitrary order.
@@ -1336,8 +1336,8 @@ fn overloading_comparisons() {
             self.id == other.id
         }
     }
-    let adam = Person { name: "Adam".to_string(), id: 12315 };
-    let ben = Person { name: "Ben".to_string(), id: 10086 };
+    let adam = Person { name: String::from("Adam"), id: 12315 };
+    let ben = Person { name: String::from("Ben"), id: 10086 };
     assert!(adam == Person { name: adam.name.clone(), id: adam.id });
     assert!(adam != ben);
     // Equality only depends on the ID#:
@@ -1678,7 +1678,7 @@ fn memory_mgt() {
 
     // Every value has precisely one owner at any time.
     // An assignment transfers ownership.
-    let s1 = "Hello".to_string();
+    let s1 = String::from("Hello");
     let s2 = s1;
     assert_eq!(s2, "Hello");
     // assert_eq!(s1, "Hello");  // ERROR: `s1` no longer owns the value.
@@ -1687,14 +1687,17 @@ fn memory_mgt() {
     fn consume(_: String) {
         ()
     }
-    let name = "Alice".to_string();
+    let name = String::from("Alice");
     assert_eq!(name, "Alice");
     consume(name);
     // assert_eq!(name, "Alice");  // ERROR: Ownership transferred from `name`
     //                             // to the function parameter.
-    let name = "Bob".to_string();
+    let name = String::from("Bob");
     consume(name.clone()); // Need to pass by copy explicitly.
     assert_eq!(name, "Bob"); // Ok.
+                             // Note that `clone()` is usually deep-copy
+                             // because it needs to maintain ownership for all its data.
+                             // Exceptions are for example smart pointers.
 
     // In C++:
     // ```cc
