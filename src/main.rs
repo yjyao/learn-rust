@@ -1616,6 +1616,108 @@ mod test {
 
 // --------------------------------------------------------------------------------
 
+fn memory_mgt() {
+    // Two ways of memory allocation:
+    //
+    // - **Stack**:
+    //     - Continuous area of memory.
+    //     - Stores fixed sizes for values.
+    //     - Fast.
+    //     - Great memory locality.
+    //
+    // - **Heap**:
+    //     - Stores values of dynamic sizes.
+    //     - Slightly slower.
+    //     - No guarantee of memory locality.
+
+    // `String` is a wraper over `Vec` --- they both have dynamic sizes.
+    // So `String` puts
+    // - fixed-sized metadata on the stack and
+    // - the actual string on the heap.
+
+    // Common languages fall into two categories:
+    //
+    // - Manual but full memory control.
+    //     - Manual
+    //     - Prone to mistakes
+    // - Automatic and safe memory control.
+    //     - Programmer has partial control.
+    //     - Typically relies on garbage collectors that are slow.
+    //
+    // Rust provides full control and safety
+    // at zero performance cost
+    // via compile time enforcement of memory management.
+
+    // Variable bindings have a scope.
+    // Using a variable outside its scope is an error.
+    {
+        let i = 1;
+        assert_eq!(i, 1);
+    }  // `i` is dropped here and the value is freed.
+    // assert_eq!(i, 1);  // ERROR: `i` is undefined.
+
+    // Every value has precisely one owner at any time.
+    // An assignment transfers ownership.
+    let s1 = "Hello".to_string();
+    let s2 = s1;
+    assert_eq!(s2, "Hello");
+    // assert_eq!(s1, "Hello");  // ERROR: `s1` no longer owns the value.
+
+    // Passing a value to a function also transfers ownership.
+    fn consume(_: String) { () }
+    let name = "Alice".to_string();
+    assert_eq!(name, "Alice");
+    consume(name);
+    // assert_eq!(name, "Alice");  // ERROR: Ownership transferred from `name`
+    //                             // to the function parameter.
+    let name = "Bob".to_string();
+    consume(name.clone());  // Need to pass by copy explicitly.
+    assert_eq!(name, "Bob");  // Ok.
+
+    // In C++:
+    // ```cc
+    // std::string s1 = "Cpp";
+    // std::string s2 = s1;
+    // ```
+    // C++ duplicates the heap data from `s1` to `s2`
+    // so they are independent copies.
+    //
+    // C++ also has `std::move`:
+    // ```cc
+    // std::string s1 = "Cpp";
+    // std::string s2 = std::move(s1);
+    // ```
+    // In this case,
+    // `s1` is in an unspecified,
+    // using `s1` is allowed but might cause problems.
+    //
+    // Back to Rust.
+
+    // Implementing `Clone` trait enables a type to be copied.
+    // It makes it easy to spot heap allocations in code.
+    // In practice,
+    // when prototyping
+    // you would often "clone your way out" of problems
+    // when the borrow checker complains,
+    // and then later try to optimize them away.
+
+    // Implementing `Copy` trait lets you copy implicitly.
+    let x = 31;
+    let y = x;
+    assert_eq!(x, y);  // Ok. `y` is a copy.
+
+    // NOTE "Copy" and "clone" are different:
+    //
+    // - Copying is bit-wise copy of memory regions.
+    // - Copying has no custom logic.
+    // - Copying does not work on types implementing the `Drop` trait.
+
+    // Implement `Drop` trait to run code when they go out of scope.
+    // To run the code before the end of the scope, call `drop(obj)`.
+}
+
+// --------------------------------------------------------------------------------
+
 fn main() {
     // Day 1:
     hello_world();
@@ -1641,4 +1743,6 @@ fn main() {
     read_write();
     impl_default();
     closures();
+    // Day 3:
+    memory_mgt();
 }
