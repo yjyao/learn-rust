@@ -373,20 +373,14 @@ fn defining_types() {
         name: String,
         age: u8,
     }
-    let peter = Person {
-        name: String::from("Peter"),
-        age: 27,
-    };
+    let peter = Person { name: String::from("Peter"), age: 27 };
     assert_eq!(
         format!("{} is {} years old", peter.name, peter.age),
         "Peter is 27 years old"
     );
 
     // Initializing using existing data.
-    let jackie = Person {
-        name: String::from("Jackie"),
-        ..peter
-    };
+    let jackie = Person { name: String::from("Jackie"), ..peter };
     assert_eq!(
         format!("{} is also {} years old", jackie.name, jackie.age),
         "Jackie is also 27 years old"
@@ -498,9 +492,7 @@ fn test_elevator_events() {
 
     /// The car has arrived on the given floor.
     fn car_arrived(floor: i32) -> Event {
-        Event::Car {
-            floor: floor.into(),
-        }
+        Event::Car { floor: floor.into() }
     }
 
     /// The car doors have opened.
@@ -515,17 +507,12 @@ fn test_elevator_events() {
 
     /// A directional button was pressed in an elevator lobby on the given floor.
     fn lobby_call_button_pressed(floor: i32, dir: Direction) -> Event {
-        Event::ElevatorButton {
-            floor: floor.into(),
-            dir,
-        }
+        Event::ElevatorButton { floor: floor.into(), dir }
     }
 
     /// A floor button was pressed in the elevator car.
     fn car_floor_button_pressed(floor: i32) -> Event {
-        Event::CarButton {
-            floor: floor.into(),
-        }
+        Event::CarButton { floor: floor.into() }
     }
 
     // Tests.
@@ -596,9 +583,7 @@ fn pattern_matching() {
         Me(Person),
     }
     assert_eq!(
-        match FamilyMember::Mother(Person {
-            name: String::from("Alex"),
-        }) {
+        match FamilyMember::Mother(Person { name: String::from("Alex") }) {
             FamilyMember::Father(father) => format!("father is {father:?}"),
             FamilyMember::Mother(Person { name, .. }) => format!("{name} is the mother"),
             _ => String::from("other case"),
@@ -798,10 +783,7 @@ fn methods() {
     impl Race {
         // Static method because of lack of the receiver `self`.
         fn new(name: &str) -> Self {
-            Self {
-                name: String::from(name),
-                laps: Vec::new(),
-            }
+            Self { name: String::from(name), laps: Vec::new() }
         }
         // The receiver `self` is short for `self: Self` or `self: Race`.
         // `Self` is an automatic type alias to `Race`.
@@ -875,9 +857,7 @@ fn traits() {
             format!("Woof, my name is {}!", self.name)
         }
     }
-    let fido = Dog {
-        name: String::from("Fido"),
-    };
+    let fido = Dog { name: String::from("Fido") };
     assert_eq!(
         fido.greet(),
         "Oh you're a cutie! What's your name? Woof, my name is Fido!"
@@ -967,10 +947,7 @@ fn test_verbosity_filter() {
         logger.log(2, "Uhoh");
     }
 
-    let mut logger = VerbosityFilter {
-        max_verbosity: 3,
-        inner: StringLogger::default(),
-    };
+    let mut logger = VerbosityFilter { max_verbosity: 3, inner: StringLogger::default() };
     do_things(&mut logger);
     assert_eq!(logger.inner.buffer, String::from("verbosity=2: Uhoh\n"));
 }
@@ -1004,14 +981,7 @@ fn generics() {
     }
     assert_eq!(format!("{:?}", Point { x: 5, y: 10 }.coords()), "(5, 10)");
     assert_eq!(
-        format!(
-            "{:?}",
-            Point {
-                x: "Hello",
-                y: "World"
-            }
-            .coords()
-        ),
+        format!("{:?}", Point { x: "Hello", y: "World" }.coords()),
         "(\"Hello\", \"World\")"
     );
 
@@ -1100,18 +1070,9 @@ fn min<T: LessThan + Clone>(a: T, b: T) -> T {
 
 #[test]
 fn test_min() {
-    let cit1 = Citation {
-        author: "Shapiro",
-        year: 2011,
-    };
-    let cit2 = Citation {
-        author: "Baumann",
-        year: 2010,
-    };
-    let cit3 = Citation {
-        author: "Baumann",
-        year: 2019,
-    };
+    let cit1 = Citation { author: "Shapiro", year: 2011 };
+    let cit2 = Citation { author: "Baumann", year: 2010 };
+    let cit3 = Citation { author: "Baumann", year: 2019 };
     assert_eq!(min(cit1, cit2), cit2);
     assert_eq!(min(cit2, cit3), cit2);
     assert_eq!(min(cit1, cit3), cit3);
