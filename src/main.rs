@@ -1485,10 +1485,10 @@ fn read_write() {
 
     let mut buffer = Vec::new();
     if let Err(_) = log(&mut buffer, "Hello") {
-        panic!();
+        panic!()
     }
     if let Err(_) = log(&mut buffer, "World") {
-        panic!();
+        panic!()
     }
     assert_eq!(buffer.len(), "Hello\nWorld\n".chars().count());
 }
@@ -2477,6 +2477,624 @@ mod exercise_protobuf_parsing {
 
 // --------------------------------------------------------------------------------
 
+fn iterators() {
+    struct Fibonacci {
+        curr: u32,
+        next: u32,
+    }
+
+    impl Iterator for Fibonacci {
+        type Item = u32;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            let new_next = self.curr + self.next;
+            self.curr = self.next;
+            self.next = new_next;
+            Some(self.curr)
+        }
+    }
+
+    let fib = Fibonacci { curr: 0, next: 1 };
+    let mut result = String::new();
+    for (i, n) in fib.enumerate().take(5) {
+        result.push_str(&format!("fib({i}): {n}\n"));
+    }
+    assert_eq!(
+        result,
+        "\
+    fib(0): 1\n\
+    fib(1): 1\n\
+    fib(2): 2\n\
+    fib(3): 3\n\
+    fib(4): 5\n\
+    "
+    );
+
+    // Implement the `IntoIterator` trait
+    // to create an iterator from an object.
+    // This is how `for` loops work too.
+
+    struct Grid {
+        width: u32,
+        height: u32,
+    }
+    impl IntoIterator for Grid {
+        type Item = (u32, u32);
+        type IntoIter = GridIter;
+        fn into_iter(self) -> Self::IntoIter {
+            GridIter { grid: self, x: 0, y: 0 }
+        }
+    }
+    struct GridIter {
+        grid: Grid,
+        x: u32,
+        y: u32,
+    }
+    impl Iterator for GridIter {
+        type Item = (u32, u32);
+        fn next(&mut self) -> Option<Self::Item> {
+            // Steps:
+            // 1. Validate
+            // 2. Get current value
+            // 3. Advance internal state for next iteration
+
+            // Validate.
+            if self.x >= self.grid.width || self.y >= self.grid.height {
+                return None;
+            }
+            // Return value for current iteration.
+            let res = Some((self.x, self.y));
+            // Advance internal state for next iteration.
+            self.x += 1;
+            if self.x >= self.grid.width {
+                self.y += 1; // Don't worry about validation ---
+                             // that's done on the next iteration.
+                self.x = 0;
+            }
+            res
+        }
+    }
+
+    let grid = Grid { width: 3, height: 4 };
+    let mut output = String::new();
+    for (x, y) in grid {
+        output.push_str(&format!("({x}, {y})\n"));
+    }
+    assert_eq!(
+        output,
+        "\
+    (0, 0)\n\
+    (1, 0)\n\
+    (2, 0)\n\
+    (0, 1)\n\
+    (1, 1)\n\
+    (2, 1)\n\
+    (0, 2)\n\
+    (1, 2)\n\
+    (2, 2)\n\
+    (0, 3)\n\
+    (1, 3)\n\
+    (2, 3)\n\
+    "
+    );
+    // println!("{:?}", grid); // ERROR: Note How `into_iter` consumes `self`.
+    //                         // So `grid` is no longer available.
+    //                         // To avoid consumption,
+    //                         // `impl IntoIterator for &Grid` instead.
+
+    // Implementing `FromIterator` allows
+    // building a collection from an `Iterator`
+    // using the `collect()` method.
+    let numbers = vec![1, 2, 3, 4];
+    let numbers_squared = numbers.iter().map(|n| n * n).collect::<Vec<_>>();
+    // Or:
+    // let numbers_squared: Vec<_> = numbers.iter().map(|n| n*n).collect();
+    assert_eq!(numbers_squared, vec![1, 4, 9, 16]);
+
+    // `Iterator` provides many functional data streaming methods:
+    // - `fold()` (simalar to `reduce()` but more powerful)
+    // - `map()`
+    // - `filter()`, `filter_map()`
+    // - 'zip()' and `unzip()`
+}
+
+// --------------------------------------------------------------------------------
+
+#[cfg(test)]
+mod exercise_iterator_method_chaining {
+    #![allow(unused)]
+
+    /// Calculate the differences between elements of `values` offset by `offset`,
+    /// wrapping around from the end of `values` to the beginning.
+    ///
+    /// Element `n` of the result is `values[(n+offset)%len] - values[n]`.
+    fn offset_differences<N>(offset: usize, values: Vec<N>) -> Vec<N>
+    where
+        N: Copy + std::ops::Sub<Output = N>,
+    {
+        values
+            .iter()
+            .zip(values.iter().cycle().skip(offset))
+            .map(|(&cur, &off)| off - cur)
+            .collect()
+    }
+
+    #[test]
+    fn test_offset_one() {
+        assert_eq!(offset_differences(1, vec![1, 3, 5, 7]), vec![2, 2, 2, -6]);
+        assert_eq!(offset_differences(1, vec![1, 3, 5]), vec![2, 2, -4]);
+        assert_eq!(offset_differences(1, vec![1, 3]), vec![2, -2]);
+    }
+
+    #[test]
+    fn test_larger_offsets() {
+        assert_eq!(offset_differences(2, vec![1, 3, 5, 7]), vec![4, 4, -4, -4]);
+        assert_eq!(offset_differences(3, vec![1, 3, 5, 7]), vec![6, -2, -2, -2]);
+        assert_eq!(offset_differences(4, vec![1, 3, 5, 7]), vec![0, 0, 0, 0]);
+        assert_eq!(offset_differences(5, vec![1, 3, 5, 7]), vec![2, 2, 2, -6]);
+    }
+
+    #[test]
+    fn test_custom_type() {
+        assert_eq!(
+            offset_differences(1, vec![1.0, 11.0, 5.0, 0.0]),
+            vec![10.0, -6.0, -5.0, 1.0]
+        );
+    }
+
+    #[test]
+    fn test_degenerate_cases() {
+        assert_eq!(offset_differences(1, vec![0]), vec![0]);
+        assert_eq!(offset_differences(1, vec![1]), vec![0]);
+        let empty: Vec<i32> = vec![];
+        assert_eq!(offset_differences(1, empty), vec![]);
+    }
+}
+
+// --------------------------------------------------------------------------------
+
+fn modules() {
+    // Modules are like namespaces.
+
+mod outer {
+    #![allow(unused)]
+
+    fn private() -> i32 {
+        1
+    }
+    pub fn public() -> i32 {
+        2
+    }
+
+    mod private_inner {
+        fn private() -> i32 {
+            3
+        }
+        pub fn public() -> i32 {
+            self::private() /* 3 */ + super::private() /* 1 */
+        }
+    }
+
+    pub(crate) mod crate_accessible_inner {
+        fn private() -> i32 {
+            // super::private_inner::private() // ERROR.
+            5
+        }
+        pub fn public() -> i32 {
+            2 + super::private_inner::public() /* 4 */
+        }
+    }
+}
+
+    // assert_eq!(outer::private(), 1); // ERROR.
+    //                                  // Cannot access private functions in a module.
+    assert_eq!(outer::public(), 2);
+    // assert_eq!(outer::private_inner::public(), 4); // ERROR.
+    assert_eq!(outer::crate_accessible_inner::public(), 6);
+
+    // Crates are a tree of modules.
+    // Use `cargo` commands to build creates.
+    // The file system tree of a crate looks like this:
+    //
+    // .
+    // ├── Cargo.lock
+    // ├── Cargo.toml  // Project/crate configuration.
+    // ├── target/
+    // │   └── ...  // Generated files.
+    // └── src/
+    //     ├── main.rs  // Executable entry point.
+    //     ├── garden.rs  // A module called `garden`.
+    //     ├── garden/
+    //     │   └── garden/vegetables.rs  // Module `garden::vegetables`.
+    //     └── house/
+    //         ├── mod.rs  // Module `house`.
+    //         └── tables.rs // Module `house::tables`.
+    //
+    // Rust will look for these files
+    // when you include a module
+    // using `mod garden;`
+    //
+    // Alternatively, you can specify the path explicitly:
+    // ```
+    // #[path="some/path.rs"]
+    // mod my_module;
+    // ```
+
+    // To import symbols from another module, write
+    // ```
+    // use std::collections::HashSet;
+    // ```
+    // To re-export the symbol to users of this module, write
+    // ```
+    // pub use std::collections::HashSet;
+    // ```
+
+    mod mycollections {
+        #[allow(unused)]
+        use std::collections::HashSet;
+        pub use std::collections::HashMap;
+    }
+    // let _: mycollections::HashSet<u32>;  // ERROR. `HashSet` is private in `mycollections`.
+    let _: mycollections::HashMap<u32, u32>;
+}
+
+// --------------------------------------------------------------------------------
+
+fn unit_tests() {
+    // #[test]
+    // fn a_test_function() {}
+
+    // // Test modules are only included when running tests.
+    // #[cfg(test)]
+    // mod a_test_module {
+    //     #[test]
+    //     fn a_test_function() {}
+    // }
+
+    // #[test]
+    // #[should_panic]
+    // fn test_error() {
+    //     let nums = vec![1, 2];
+    //     nums[3];
+    // }
+
+    // #[test]
+    // fn test() -> Result<(), String> {
+    //     Ok(())
+    // }
+
+    // // Write tests directly under implementations.
+}
+
+// --------------------------------------------------------------------------------
+
+fn integration_tests() {
+    // Create a `tests` folder next to `src`.
+    // These are blackbox tests
+    // because they no longer have access to private functions
+    // from the module under test.
+}
+
+// --------------------------------------------------------------------------------
+
+fn documentation_tests() {
+    #[allow(unused)]
+    /// Shortens a string to the given length.
+    ///
+    /// ```
+    /// # use playground::shorten_string;
+    /// assert_eq!(shorten_string("Hello World", 5), "Hello");
+    /// assert_eq!(shorten_string("Hello World", 20), "Hello World");
+    /// ```
+    pub fn shorten_string(s: &str, length: usize) -> &str {
+        &s[..std::cmp::min(length, s.len())]
+    }
+
+    // These tests will both
+    // render in documentation
+    // and run on `cargo test`.
+    // The `#` hides the code from the doc but still gets run.
+
+    // Code blocks can be annotated, for exampl:
+    // - ```ignore
+    // - ```no_run
+    // - ```should_panic
+    // - ```compile_fail
+}
+
+// --------------------------------------------------------------------------------
+
+fn lint_and_clippy() {
+    // Clippy (https://doc.rust-lang.org/clippy/) offers additional lints.
+    // Use the `#[deny(some-lint)]` attribute to disable a lint
+    // for the specified item.
+}
+
+// --------------------------------------------------------------------------------
+
+#[cfg(test)]
+mod exercise_lhun_algorithm {
+    #![allow(unused)]
+
+    pub fn luhn(cc_number: &str) -> bool {
+        let Some(digits): Option<Vec<u32>> = (cc_number.chars().rev())
+            .filter(|c| !c.is_whitespace()) // Ignore whitespaces.
+            .map(|c| c.to_digit(10))
+            .collect()
+        else {
+            return false; // Cannot contain non-digit non-whitespace chars.
+        };
+        if digits.len() < 2 {
+            return false;
+        }
+        let sum: u32 = (digits.iter().copied().step_by(2)) // Single digits.
+            .chain(
+                (digits.iter().skip(1).step_by(2)) // Double digits.
+                    .map(|n| (n * 2) / 10 + (n * 2) % 10),
+            )
+            .sum();
+        sum % 10 == 0
+    }
+
+    #[test]
+    fn test_valid_cc_number() {
+        assert!(luhn("4263 9826 4026 9299"));
+        assert!(luhn("4539 3195 0343 6467"));
+        assert!(luhn("7992 7398 713"));
+        assert!(luhn("6 1 2 3 4"));
+    }
+
+    #[test]
+    fn test_invalid_cc_number() {
+        assert!(!luhn("4223 9826 4026 9299"));
+        assert!(!luhn("4539 3195 0343 6476"));
+        assert!(!luhn("8273 1232 7352 0569"));
+        assert!(!luhn("01"));
+    }
+
+    #[test]
+    fn test_too_short_cc_number() {
+        assert!(!luhn("0"));
+        assert!(!luhn(" 0 "));
+        assert!(!luhn("1"));
+    }
+
+    #[test]
+    fn test_double_over_10() {
+        assert!(luhn("91"));
+        assert!(luhn("380"));
+        assert!(luhn("174"));
+        assert!(luhn("67"));
+        assert!(luhn("59"));
+    }
+
+    #[test]
+    fn test_sum_over_10() {
+        assert!(luhn("919191919191919191919191"));
+        assert!(luhn("838383838383838383838383"));
+    }
+
+    #[test]
+    fn test_invalid_characters() {
+        assert!(!luhn("bar0"));
+    }
+
+    #[test]
+    fn test_empty_number() {
+        assert!(!luhn(""));
+        assert!(!luhn(" "));
+        assert!(!luhn("  "));
+    }
+}
+
+// --------------------------------------------------------------------------------
+
+fn error_handling() {
+    // Use a combination of `Result<_, _>` and the try operator `?`.
+
+    // The try operator also tries to convert the unwrapped error into the expected error type.
+    // When the type conversion does not exsit,
+    // you can `impl From<>` yourself.
+
+    // To write your own Error type,
+    // it's recommended to use `thiserror::Error`
+    // because it helps implement `Display` and `From`.
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("This is an error: {0:?}")] // This will be the message of the error.
+    struct MyError(String);
+
+    // `thiserror::Error` also allows `enum` errors (for a family of errors).
+
+    // Use the `anyhow` crate to pretend all errors are the same type
+    // (so you don't have to decide for each function).
+
+    fn this_is_to_catch_the_error_returned_by_the_try_operator() -> Result<(), anyhow::Error> {
+        use anyhow::bail;
+        fn vector_or_error() -> anyhow::Result<Vec<i32>> {
+            bail!("You ain't getting no vector!"); // This returns an `anyhow::Error`.
+        }
+        use anyhow::Context;
+        let _sum: i32 = vector_or_error()
+            .with_context(|| {
+                MyError(String::from(
+                    "I'm trying to do this when calling this function",
+                ))
+            })? // `with_context` prepends to the error (if any).
+            .iter()
+            .sum();
+        Ok(())
+    }
+    let Err(_) = this_is_to_catch_the_error_returned_by_the_try_operator() else {
+        panic!()
+    };
+}
+
+// --------------------------------------------------------------------------------
+
+#[cfg(test)]
+mod exercise_result {
+    #![allow(unused)]
+
+    use anyhow::bail;
+    use std::iter::Peekable;
+    use std::str::Chars;
+
+    /// An arithmetic operator.
+    #[derive(Debug, PartialEq, Clone, Copy)]
+    enum Op {
+        Add,
+        Sub,
+    }
+
+    /// A token in the expression language.
+    #[derive(Debug, PartialEq)]
+    enum Token {
+        Number(String),
+        Identifier(String),
+        Operator(Op),
+    }
+
+    /// An expression in the expression language.
+    #[derive(Debug, PartialEq)]
+    enum Expression {
+        /// A reference to a variable.
+        Var(String),
+        /// A literal number.
+        Number(u32),
+        /// A binary operation.
+        Operation(Box<Expression>, Op, Box<Expression>),
+    }
+
+    fn tokenize(input: &str) -> Tokenizer {
+        return Tokenizer(input.chars().peekable());
+    }
+
+    #[derive(thiserror::Error, Clone, Debug, PartialEq)]
+    #[error("Unexpected character '{0}' in in put")]
+    struct TokenizerError(String);
+
+    struct Tokenizer<'a>(Peekable<Chars<'a>>);
+
+    impl<'a> Iterator for Tokenizer<'a> {
+        type Item = Result<Token, TokenizerError>;
+
+        fn next(&mut self) -> Option<Result<Token, TokenizerError>> {
+            let c = self.0.next()?;
+            match c {
+                '0'..='9' => {
+                    let mut num = String::from(c);
+                    while let Some(c @ '0'..='9') = self.0.peek() {
+                        num.push(*c);
+                        self.0.next();
+                    }
+                    Some(Ok(Token::Number(num)))
+                }
+                'a'..='z' => {
+                    let mut ident = String::from(c);
+                    while let Some(c @ ('a'..='z' | '_' | '0'..='9')) = self.0.peek() {
+                        ident.push(*c);
+                        self.0.next();
+                    }
+                    Some(Ok(Token::Identifier(ident)))
+                }
+                '+' => Some(Ok(Token::Operator(Op::Add))),
+                '-' => Some(Ok(Token::Operator(Op::Sub))),
+                _ => Some(Err(TokenizerError(format!("Unexpected character {c}")))),
+            }
+        }
+    }
+
+    fn parse(input: &str) -> anyhow::Result<Expression> {
+        let mut tokens = tokenize(input);
+
+        fn parse_expr<'a>(tokens: &mut Tokenizer<'a>) -> anyhow::Result<Expression> {
+            let Some(tok) = tokens.next().transpose()? else {
+                bail!("Unexpected end of input");
+            };
+            let expr = match tok {
+                Token::Number(num) => {
+                    let v = num.parse().expect("Invalid 32-bit integer'");
+                    Expression::Number(v)
+                }
+                Token::Identifier(ident) => Expression::Var(ident),
+                Token::Operator(_) => bail!("Unexpected token {tok:?}"),
+            };
+            // Look ahead to parse a binary operation if present.
+            match tokens.next().transpose()? {
+                None => Ok(expr),
+                Some(Token::Operator(op)) => Ok(Expression::Operation(
+                    Box::new(expr),
+                    op,
+                    Box::new(parse_expr(tokens)?),
+                )),
+                Some(tok) => bail!("Unexpected token {tok:?}"),
+            }
+        }
+
+        parse_expr(&mut tokens)
+    }
+
+    #[test]
+    fn test() {
+        let expr = parse("10+foo+20-30");
+        assert_eq!(
+            expr.unwrap(),
+            Expression::Operation(
+                Box::new(Expression::Number(10)),
+                Op::Add,
+                Box::new(Expression::Operation(
+                    Box::new(Expression::Var(String::from("foo"))),
+                    Op::Add,
+                    Box::new(Expression::Operation(
+                        Box::new(Expression::Number(20)),
+                        Op::Sub,
+                        Box::new(Expression::Number(30))
+                    ))
+                ))
+            )
+        );
+        let expr = parse("10+");
+        if let Err(_) = expr {
+        } else {
+            assert!(false)
+        };
+    }
+}
+
+// --------------------------------------------------------------------------------
+
+fn unsafe_rust() {
+    // To write unsafe Rust, put code in (small) `unsafe` blocks and justify with comments.
+    // Unsafe Rust can trigger undefined behavior.
+    // Unsafe Rust lets you:
+    //
+    // - Dereference raw pointers.
+    // - Access or modify mutable static variables.
+    // - Access `union` fields.
+    // - Call `unsafe` functions, including `extern` functions.
+    // - Implement `unsafe` traits.
+
+    let r1 = &mut String::from("careful") as *mut String;
+    // println!("{}", *r1); // ERROR: Cannot dereference a raw pointer.
+    unsafe {
+        assert_eq!(format!("{}", *r1), "careful");
+    }
+
+    // `i` and `b` are stored on the same byte on heap.
+    #[allow(unused)]
+    union MyUnion {
+        i: u8,
+        b: bool,
+    }
+    let u = MyUnion { i: 42 };
+    // assert_eq!(format!("int: {}", u.i), "int: 42"); // ERROR: Cannot decide whether `i` or `b` is
+    //                                                 // stored.
+    assert_eq!(format!("int: {}", unsafe { u.i }), "int: 42");
+}
+
+// --------------------------------------------------------------------------------
+
 fn main() {
     // Day 1:
     hello_world();
@@ -2509,4 +3127,13 @@ fn main() {
     trait_objects();
     borrowing_a_value();
     lifetime_annotations();
+    // Day 4:
+    iterators();
+    modules();
+    unit_tests();
+    integration_tests();
+    documentation_tests();
+    lint_and_clippy();
+    error_handling();
+    unsafe_rust();
 }
