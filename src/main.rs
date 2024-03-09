@@ -1405,6 +1405,12 @@ fn overloading_operators() {
     // ^ `&p1` does not consume `p1`.
     // So even without deriving `Copy` and `Clone`,
     // we would still have access over `p1` after the operation.
+
+    // If you derive both `Copy` and `Clone`, DON'T implement `Clone`
+    // because that would be confusing.
+    // Also in this case `p1` (copy by default) is faster than `p1.clone()`
+    // because `.clone()` is a function call
+    // and is harder to optimize away for the compiler.
 }
 
 // --------------------------------------------------------------------------------
@@ -1643,11 +1649,14 @@ fn memory_mgt() {
     //     - Stores fixed sizes for values.
     //     - Fast.
     //     - Great memory locality.
+    //     - Limited volume.
+    //     - Automatic, following function calls. The programmer does not need to manage.
     //
     // - **Heap**:
     //     - Stores values of dynamic sizes.
     //     - Slightly slower.
     //     - No guarantee of memory locality.
+    //     - Expandable volume.
 
     // `String` is a wraper over `Vec` --- they both have dynamic sizes.
     // So `String` puts
@@ -1736,6 +1745,11 @@ fn memory_mgt() {
     // - Copying is bit-wise copy of memory regions.
     // - Copying has no custom logic.
     // - Copying does not work on types implementing the `Drop` trait.
+
+    // `Copy` types are typically small, trivial-to-copy data.
+    // All primitive types are `Copy`s: they copy by default.
+    // For custom structs that store only primitive values,
+    // you can opt in to `Copy`.
 
     // Implement `Drop` trait to run code when they go out of scope.
     // To run the code before the end of the scope, call `drop(obj)`.
