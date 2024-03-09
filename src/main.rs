@@ -324,9 +324,8 @@ fn strings() {
     assert_eq!(reversed, "界世 olleh");
 
     // Get the character after '世':
-    let start = s
-        .find("世") //
-        .unwrap(); // Ignore errors if any.
+    let start = s.find("世").unwrap(); // `unwrap` might panic
+                                       // but let's ignore that for now.
     let s1 = &s[start..];
     assert_eq!(s1.chars().skip(1).next().unwrap(), '界');
 }
@@ -379,7 +378,8 @@ fn defining_types() {
         "Peter is 27 years old"
     );
 
-    // Initializing using existing data.
+    // Initializing with existing data
+    // using the "struct update syntax" (`..<var>`).
     let jackie = Person { name: String::from("Jackie"), ..peter };
     assert_eq!(
         format!("{} is also {} years old", jackie.name, jackie.age),
@@ -754,7 +754,7 @@ fn test_recursion() {
         eval(Expression::Op {
             op: Operation::Add,
             left: Box::new(term1),
-            right: Box::new(term2),
+            right: Box::new(term2)
         }),
         Ok(85)
     );
@@ -1080,6 +1080,542 @@ fn test_min() {
 
 // --------------------------------------------------------------------------------
 
+fn std_types() {
+    // Layers:
+    //
+    // -   `core`: basic types with no dependencies.
+    // -   `alloc`: types that depend on allocators or OS (like `Vec`).
+    // -   `std`: standard utils.
+
+    // Create doc strings in the code:
+    //
+    // - Use triple-slash comments `///` before function signatures.
+    // - Use `//!` for module-level doc strings.
+    // - Use `/*! .. */` for inner items.
+    //
+    // The `rustdoc` tool pulls these doc strings
+    // to create a documentation on https://docs.rs.
+    // Write these doc strings in Markdown.
+    //
+
+    // `Option`
+    let maybe_n: Option<i32> = Some(10);
+    assert_eq!(maybe_n.unwrap(), 10);
+    #[allow(unused)]
+    let maybe_n: Option<i32> = None;
+    // maybe_n.unwrap();  // ERROR: Will panic.
+    // maybe_n.expect("n is absent");  // ERROR: Similar to `unwrap`
+    //                                 // but prints "n is absent" as the error.
+    let maybe_n = Some(10);
+    assert_eq!(maybe_n.expect("n is absent"), 10); // Same as `unwrap`.
+
+    // Handy for prototyping.
+    // Usually cleans up all the `unwrap`/`expect` on production code
+    // and handle `None` better.
+
+    let name = "Löwe 老虎 Léopard Gepardi";
+    let mut position: Option<usize> = name.find('é');
+    assert_eq!(format!("{position:?}"), "Some(14)");
+    position = name.find('Z');
+    assert_eq!(format!("{position:?}"), "None");
+
+    // `Result`
+    // Standard type to implement error handling.
+    use std::fs::File;
+    let file: Result<File, std::io::Error> = File::open("imaginary.file.txt");
+    // Use `match` to unpack the `Result`:
+    match file {
+        Ok(_) => assert!(false),
+        Err(_) => assert!(true),
+    }
+    // Alternatively, use `let-else` to unpack the `Result`:
+    if let Ok(file) = File::open("imaginary.file.txt") {
+        eprintln!("{file:?}");
+        assert!(false);
+    } else {
+        assert!(true);
+    }
+    // If we know an error should never happen, we can `unwrap` directly:
+    let guaranteed_value: Result<i32, String> = Ok(31);
+    assert_eq!(guaranteed_value.unwrap(), 31);
+
+    // `String`
+    let mut s1 = String::new();
+    assert_eq!(s1, "");
+    assert_eq!(s1.len(), 0);
+    s1.push_str("abc");
+    assert_eq!(s1.len(), 3);
+    s1 = String::from("你好");
+    assert_eq!(s1.len(), 6); // `len` is the count of *bytes*,
+                             // not visual characters.
+    assert_eq!(s1.chars().count(), 2); // `chars` collects the characters.
+                                       // But your concept of characters
+                                       // can still differ from `chars`.
+                                       // println!(s1[1..]);  // ERROR: "byte index 1 is not a char boundary."
+    assert_eq!(s1.chars().nth(1).unwrap(), '好');
+
+    s1 = String::with_capacity(2);
+    assert_eq!(s1.capacity(), 2);
+    s1.push_str("abc");
+    assert!(s1.capacity() > 2); // Capacity grows as needed.
+
+    s1 = String::from("world");
+    let mut s2 = String::from("hello ");
+    s2.push_str(&s1); // `s1` needs dereferencing to be casted to `&str`.
+                      // `String` does this by
+                      // implementing the `Deref<Target = str>` trait.
+                      // This also lets `String` call any methods in `&str`.
+    assert_eq!(s2, "hello world");
+
+    // Implement `ToString` (don't) or `Display` traits for a struct
+    // so it can be converted to a string.
+
+    // `Vec`
+    let mut v1: Vec<i32> = Vec::new();
+    assert_eq!(v1.len(), 0);
+    v1.push(42);
+    assert_eq!(v1.len(), 1);
+
+    let mut v2 = Vec::new(); // Rust infers `i32` on the first push.
+                             // We don't have to specify.
+    v2.extend(v1.iter());
+    v2.push(31);
+    assert_eq!(v2, [42, 31]);
+    assert_eq!(v2.pop().unwrap(), 31);
+    assert_eq!(v2, [42]);
+    // v1.push("hey");  // ERROR: Rust already infers that `v2` is a `Vec<i32>`,
+    //                  // so this is a type mismatch.
+
+    // Canonical macro to initialize a vector with elements.
+    let mut v3 = vec![0, 0, 1, 2, 3, 4, 2];
+
+    // Retain only the even elements.
+    v3.retain(|x| x % 2 == 0);
+    assert_eq!(v3, [0, 0, 2, 4, 2]);
+
+    // Remove consecutive duplicates.
+    v3.dedup();
+    assert_eq!(v3, [0, 2, 4, 2]);
+
+    // `Vec` implements `Deref<Target = [T]`
+    // so you can call slice methods on a `Vec`.
+    // Like the index-based item getter `[]`.
+    let v4 = vec![2, 3, 4];
+    assert_eq!(v4[1], 3);
+    // eprintln!("{}", v4[10]);  // ERROR: out of bounds.
+    assert_eq!(v4.get(1).unwrap(), &3);
+    assert_eq!(v4.get(10), None);
+
+    // `HashMap`
+    use std::collections::HashMap;
+    let mut page_counts = HashMap::new();
+    page_counts.insert("Adventures of Huckleberry Finn".to_string(), 207);
+    page_counts.insert("Grimms' Fairy Tales".to_string(), 751);
+    page_counts.insert("Pride and Prejudice".to_string(), 303);
+    // ^ Noticed the `to_string`? NOTE Do NOT use `&str` as key!
+
+    assert_eq!(page_counts.len(), 3);
+    assert_eq!(page_counts.contains_key("Les Misérables"), false);
+
+    match page_counts.get("西游记") {
+        Some(_) => assert!(false),
+        None => assert!(true),
+    }
+
+    let page_count: &mut i32 = page_counts.entry("三国演义".to_string()).or_insert(0);
+    *page_count += 1;
+    assert_eq!(page_counts.get("三国演义").unwrap(), &1);
+    let count = page_counts.get("1984").unwrap_or(&336);
+    assert_eq!(count, &336);
+    assert_eq!(page_counts.contains_key("1984"), false);
+
+    let prices = HashMap::from([
+        ("Apple".to_string(), 8), //
+        ("Banana".to_string(), 5),
+    ]);
+    let mut fruits: Vec<_> = prices.keys().collect();
+    fruits.sort(); // `keys()` returns in arbitrary order.
+    assert_eq!(fruits, ["Apple", "Banana"]);
+}
+
+// --------------------------------------------------------------------------------
+// Exercise: Counter
+
+#[test]
+fn test_counter() {
+    use std::collections::HashMap;
+    use std::hash::Hash;
+
+    /// Counter counts the number of times each value of type T has been seen.
+    struct Counter<T: Eq + Hash> {
+        counts: HashMap<T, u64>,
+    }
+
+    impl<T: Eq + Hash> Counter<T> {
+        /// Create a new Counter.
+        fn new() -> Self {
+            Counter { counts: HashMap::new() }
+        }
+
+        /// Count an occurrence of the given value.
+        fn count(&mut self, value: T) {
+            *self.counts.entry(value).or_insert(0) += 1;
+        }
+
+        /// Return the number of times the given value has been seen.
+        fn times_seen(&self, value: T) -> u64 {
+            self.counts.get(&value).copied().unwrap_or_default()
+        }
+    }
+
+    let mut ctr = Counter::new();
+    ctr.count(13);
+    ctr.count(14);
+    ctr.count(16);
+    ctr.count(14);
+    ctr.count(14);
+    ctr.count(11);
+
+    assert_eq!(ctr.times_seen(10), 0);
+    assert_eq!(ctr.times_seen(11), 1);
+    assert_eq!(ctr.times_seen(12), 0);
+    assert_eq!(ctr.times_seen(13), 1);
+    assert_eq!(ctr.times_seen(14), 3);
+    assert_eq!(ctr.times_seen(15), 0);
+    assert_eq!(ctr.times_seen(16), 1);
+    assert_eq!(ctr.times_seen(17), 0);
+
+    let mut strctr = Counter::new();
+    strctr.count("apple");
+    strctr.count("orange");
+    strctr.count("apple");
+    assert_eq!(strctr.times_seen("apple"), 2);
+    assert_eq!(strctr.times_seen("orange"), 1);
+    assert_eq!(strctr.times_seen("banana"), 0);
+
+    // Make sure `times_seen` does not count.
+    assert_eq!(strctr.times_seen("apple"), 2);
+    assert_eq!(strctr.times_seen("orange"), 1);
+    assert_eq!(strctr.times_seen("banana"), 0);
+}
+
+// --------------------------------------------------------------------------------
+
+fn overloading_comparisons() {
+    // `PartialEq` and `Eq`
+    struct Person {
+        name: String,
+        id: u32,
+    }
+    impl PartialEq for Person {
+        fn eq(&self, other: &Self) -> bool {
+            self.id == other.id
+        }
+    }
+    let adam = Person { name: "Adam".to_string(), id: 12315 };
+    let ben = Person { name: "Ben".to_string(), id: 10086 };
+    assert!(adam == Person { name: adam.name.clone(), id: adam.id });
+    assert!(adam != ben);
+    // Equality only depends on the ID#:
+    assert!(adam != Person { name: adam.name.clone(), id: 0 });
+    assert!(adam == Person { name: ben.name.clone(), id: adam.id });
+    // `Eq` implements the full equivalence relation.
+
+    // `PartialOrd` and `Ord`
+    use std::cmp::Ordering;
+    #[derive(Eq, PartialEq)]
+    struct Citation {
+        author: String,
+        year: u32,
+    }
+    // Sort by author first, then year.
+    impl PartialOrd for Citation {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            match self.author.partial_cmp(&other.author) {
+                Some(Ordering::Equal) => self.year.partial_cmp(&other.year),
+                author_ord => author_ord,
+            }
+        }
+    }
+    // `Ord` implements total ordering.
+    // Ordering can happen between different types. Equality cannot.
+
+    // NOTE In practice,
+    // it's common to just derive these traits
+    // *without* implementing them.
+}
+
+// --------------------------------------------------------------------------------
+
+fn overloading_operators() {
+    // Overload operators by implementing `std::ops` traits.
+    #[derive(PartialEq, Debug, Copy, Clone)]
+    struct Point {
+        x: i32,
+        y: i32,
+    }
+    // We can additionally implement `Add` for `&Point`
+    // to avoid unnecessary copies.
+    impl std::ops::Add for Point {
+        type Output = Self;
+        fn add(self, other: Self) -> Self {
+            Self { x: self.x + other.x, y: self.y + other.y }
+        }
+    }
+    let p1 = Point { x: 10, y: 20 };
+    let p2 = Point { x: 100, y: 200 };
+    assert_eq!(p1 + p2, Point { x: 110, y: 220 });
+    // `p1` and `p2` are still available thanks to `Copy` and `Clone` traits.
+    // If you remove them, the following line will error out.
+    assert_eq!(p1 + p2, Point { x: 110, y: 220 });
+
+    // We can also overload for adding `Point`s to different types.
+    // Let's implement for `&Point` this time around.
+    impl std::ops::Add<&(i32, i32)> for &Point {
+        type Output = Point;
+        fn add(self, other: &(i32, i32)) -> Self::Output {
+            Self::Output { x: self.x + other.0, y: self.y + other.1 }
+        }
+    }
+    assert_eq!(&p1 + &(3, 2), Point { x: 13, y: 22 });
+    // ^ `&p1` does not consume `p1`.
+    // So even without deriving `Copy` and `Clone`,
+    // we would still have access over `p1` after the operation.
+}
+
+// --------------------------------------------------------------------------------
+
+fn casting() {
+    // `From` and `Into`
+    #[derive(PartialEq, Debug)]
+    struct Point {
+        x: i32,
+        y: i32,
+    }
+    impl From<(i32, i32)> for Point {
+        fn from(pt: (i32, i32)) -> Self {
+            Self { x: pt.0, y: pt.1 }
+        }
+    }
+    assert_eq!(Point::from((2, 3)), Point { x: 2, y: 3 });
+    // `Into<Point> for (i32, i32)` is automatically implemented by `From`:
+    assert_eq!(Point { x: 2, y: 3 }, (2, 3).into());
+    // It's common to only implement the `From` trait,
+    // and use `T: Into<SomeThing>` as templates.
+
+    #[allow(unused)]
+    {
+        let s = String::from("hello");
+        let addr = std::net::Ipv4Addr::from([127, 0, 0, 1]);
+        let one = i16::from(true);
+        let bigger = i32::from(123_i16);
+
+        let s: String = "hello".into();
+        let addr: std::net::Ipv4Addr = [127, 0, 0, 1].into();
+        let one: i16 = true.into();
+        let bigger: i32 = 123_i16.into();
+    }
+
+    // Casting with `as` is possible, but *dangerous*:
+    // it is easy to use `as` incorrectly.
+    let value: i64 = 1000;
+    assert_eq!(1000, value as u16);
+    assert_eq!(1000, value as i16);
+    assert_eq!(232, value as u8);
+
+    // Best practices:
+    //
+    // - Only use `as` to indicate unconditional truncation.
+    // - For small -> big casts (no data loss), use `From`/`Into`.
+    // - For big -> small casts (possible data loss), use `TryFrom`/`TryInto`.
+}
+
+// --------------------------------------------------------------------------------
+
+fn read_write() {
+    use std::io::{BufRead, BufReader, Read};
+
+    fn count_lines<R: Read>(reader: R) -> usize {
+        let buf_reader = BufReader::new(reader);
+        buf_reader.lines().count()
+    }
+
+    let slice: &[u8] = b"foo\nbar\nbaz\n";
+    assert_eq!(count_lines(slice), 3);
+
+    let file = std::fs::File::open(std::env::current_exe().unwrap()).unwrap();
+    eprintln!("lines in the compiled execucatble: {}", count_lines(file));
+
+    use std::io::Write;
+
+    fn log<W: Write>(writer: &mut W, msg: &str) -> std::io::Result<()> {
+        writer.write_all(msg.as_bytes())?; // The `?` returns if error.
+        writer.write_all("\n".as_bytes())
+    }
+
+    let mut buffer = Vec::new();
+    if let Err(_) = log(&mut buffer, "Hello") {
+        panic!();
+    }
+    if let Err(_) = log(&mut buffer, "World") {
+        panic!();
+    }
+    assert_eq!(buffer.len(), "Hello\nWorld\n".chars().count());
+}
+
+// --------------------------------------------------------------------------------
+
+fn impl_default() {
+    #![allow(unused)]
+
+    // The `Default` trait fills default values.
+
+    // Can be derived.
+    #[derive(Debug, Default)]
+    struct Derived {
+        x: u32,
+        y: String,
+        z: Implemented,
+    }
+
+    // Alternatively, you can implement `Default` directly.
+    #[derive(Debug)]
+    struct Implemented(String);
+    impl Default for Implemented {
+        fn default() -> Self {
+            Self("John Smith".into())
+        }
+    }
+
+    assert_eq!(
+        format!("{:?}", Derived::default()),
+        r#"Derived { x: 0, y: "", z: Implemented("John Smith") }"#
+    );
+
+    assert_eq!(
+        format!(
+            "{:?}",
+            Derived { y: "Y is set!".into(), ..Derived::default() }
+        ),
+        r#"Derived { x: 0, y: "Y is set!", z: Implemented("John Smith") }"#
+    );
+
+    let none: Option<Derived> = None;
+    assert_eq!(
+        format!("{:?}", none.unwrap_or_default()),
+        r#"Derived { x: 0, y: "", z: Implemented("John Smith") }"#
+    );
+}
+
+// --------------------------------------------------------------------------------
+
+fn closures() {
+    // Closures are also called lambda expressions.
+
+    // `FnOnce` includes both `Fn` and `FnMut`.
+    // So this is really saying "any lambda".
+    fn apply_then_double(func: impl FnOnce(i32) -> i32, input: i32) -> i32 {
+        2 * func(input)
+    }
+
+    let add_3 = |x| x + 3; // This is an `Fn`.
+                           // `Fn`s cannot consume or capture values.
+                           // `add_3` captures no values at all.
+    assert_eq!(apply_then_double(add_3, 10), 2 * (10 + 3));
+
+    // An example that does capture values.
+    let mut v = Vec::new();
+    let mut accumulate = |x: i32| {
+        v.push(x);
+        v.iter().sum::<i32>()
+    }; // This is an `FnMut`. It can mutate the captured value `v`.
+    assert_eq!(apply_then_double(&mut accumulate, 4), 2 * (4));
+    assert_eq!(apply_then_double(&mut accumulate, 6), 2 * (4 + 6));
+    assert_eq!(apply_then_double(&mut accumulate, 2), 2 * (4 + 6 + 2));
+
+    // This is an `FnOnce` because it consumes the captured value.
+    let multiply_sum = |x| x * v.into_iter().sum::<i32>();
+    assert_eq!(apply_then_double(multiply_sum, 5), 2 * 5 * (4 + 6 + 2));
+    // let _ = apply_then_double(multiply_sum, 5);  // ERROR: `v` has been consumed.
+
+    // Compiler infers `Copy` and/or `Clone`
+    // depending on what the colsure captures.
+
+    fn make_greeter(prefix: String) -> impl Fn(String) -> String {
+        // By default, closures capture by reference.
+        // Here, `prefix` will die after `make_greeter` returns,
+        // breaking the returned greeter function.
+        // With the `move` keyword the closure captures by value
+        // (i.e., it copies `prefix`).
+        return move |name| format!("{} {}", prefix, name);
+    }
+
+    let hi = make_greeter("Hi,".into());
+    assert_eq!(hi("Greg".into()), "Hi, Greg");
+}
+
+// --------------------------------------------------------------------------------
+// Exercise: ROT13
+
+// fn main() {
+//     let mut rot =
+//         RotDecoder { input: "Gb trg gb gur bgure fvqr!".as_bytes(), rot: 13 };
+//     let mut result = String::new();
+//     rot.read_to_string(&mut result).unwrap();
+//     println!("{}", result);
+// }
+
+#[cfg(test)]
+mod test {
+    use std::io::Read;
+
+    struct RotDecoder<R: Read> {
+        input: R,
+        rot: u8,
+    }
+
+    // Implement the `Read` trait for `RotDecoder`.
+    impl<R: Read + std::fmt::Debug> Read for RotDecoder<R> {
+        /// Decode `self.input` into `buf`. Only rotate ASCII alphabetic characters.
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let size = self.input.read(buf)?;
+            for byte in &mut buf[..size] {
+                if !byte.is_ascii_alphabetic() { continue }
+                let base = if byte.is_ascii_uppercase() { 'A' } else { 'a' } as u8;
+                *byte = base + (*byte - base + self.rot) % 26;
+            }
+            Ok(size)
+        }
+    }
+
+    #[test]
+    fn joke() {
+        let mut rot = RotDecoder {
+            input: "Gb trg gb gur bgure fvqr!".as_bytes(),
+            rot: 13,
+        };
+        let mut result = String::new();
+        rot.read_to_string(&mut result).unwrap();
+        assert_eq!(&result, "To get to the other side!");
+    }
+
+    #[test]
+    fn binary() {
+        let input: Vec<u8> = (0..=255u8).collect();
+        let mut rot = RotDecoder::<&[u8]> { input: input.as_ref(), rot: 13 };
+        let mut buf = [0u8; 256];
+        assert_eq!(rot.read(&mut buf).unwrap(), 256);
+        for i in 0..=255 {
+            if input[i] != buf[i] {
+                assert!(input[i].is_ascii_alphabetic());
+                assert!(buf[i].is_ascii_alphabetic());
+            }
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------
+
 fn main() {
     // Day 1:
     hello_world();
@@ -1092,9 +1628,17 @@ fn main() {
     slices();
     strings();
     defining_types();
+    // Day 2:
     pattern_matching();
     let_control_flow();
     methods();
     traits();
     generics();
+    std_types();
+    overloading_comparisons();
+    overloading_operators();
+    casting();
+    read_write();
+    impl_default();
+    closures();
 }
