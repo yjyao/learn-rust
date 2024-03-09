@@ -10,20 +10,33 @@ fn hello_world() {
 
 fn variables() {
     let x: i32 = 10;
-    println!("x: {x}");
+    assert_eq!(x, 10);
     // x = 20;  // ERROR: variables are by default immutable.
 
     let mut x: i32 = 10; // Can shadow variables.
-    println!("x: {x}");
+    assert_eq!(x, 10);
     x = 20; // This is ok because `x` is mutable now.
-    println!("x: {x}");
+    assert_eq!(x, 20);
     // x = "hey";  // ERROR: type mismatch.
     let x: String = String::from("hey"); // Redeclare `x` to be a string is ok.
-    println!("x: {x}");
-    println!("x: {:?}", x); // Print debug info.
-    println!("x: {:#?}", x); // Pretty-prints the debug info (line breaks for arrays etc.).
-    println!("x: {x:?}"); // Or like this.
-                          // `structs` can support the debug representation with '#{derive Debug}'.
+    assert_eq!(x, "hey");
+
+    // Formatting variables.
+    // `format!` returns a formatted string.
+    // `println!` prints it out to stdout.
+    let x: String = String::from("hey");
+    assert_eq!(format!("x: {x}"), "x: hey");
+    // println!("x: {x}");  // This prints "x: hey" to stdout.
+    // Format option `:?` gives debug info.
+    assert_eq!(format!("x: {:?}", x), "x: \"hey\"");
+    // Format option `:#?` gives pretty-printed debug info
+    // that, for example, includes line breaks for large arrays.
+    assert_eq!(format!("x: {:#?}", x), "x: \"hey\"");
+    // Alternative styles:
+    assert_eq!(format!("x: {}", x), "x: hey");
+    assert_eq!(format!("x: {x:?}"), "x: \"hey\"");
+
+    // `struct`s can support the debug representation with '#[derive(Debug)]'.
 }
 
 // --------------------------------------------------------------------------------
@@ -39,20 +52,22 @@ fn values() {
 
     // `bool` values are `true` and `false`. They are not aliases to `1` and `0`.
 
-    fn takes_u32(x: u32) {
-        println!("u32: {x}");
+    fn takes_u32(x: u32) -> String {
+        return format!("u32: {x}");
     }
 
-    fn takes_i8(x: i8) {
-        println!("i8: {x}");
+    fn takes_i8(x: i8) -> String {
+        return format!("i8: {x}");
     }
 
     let mut _x = 10;
-    takes_i8(_x); // Compiler infers `x` as `i8`.
+    assert_eq!(takes_i8(_x), "i8: 10"); // Compiler infers `x` as `i8`.
     _x = 20;
     // _x = 1024;  // ERROR: 1024 is out of range of `i8`.
     // takes_u32(_x);  // ERROR: Type mismatch.
-    takes_u32(_x as u32); // A couple of type casting operations exist. See https://stackoverflow.com/a/28280042.
+    assert_eq!(takes_u32(_x as u32), "u32: 20");
+    // A couple of type casting operations exist.
+    // See https://stackoverflow.com/a/28280042.
 }
 
 // --------------------------------------------------------------------------------
@@ -66,6 +81,7 @@ fn fib(n: u32) -> u32 {
         fib(n - 1) + fib(n - 2)
     }
     // Returns the last expression in a block.
+    // This is more idiomatic than using return whereever possible.
     // Note that the line does NOT end with a `;`:
     // That will implicitly add a null expression `()`
     // messing up the return value.
@@ -79,37 +95,62 @@ fn test_fib() {
 // --------------------------------------------------------------------------------
 
 fn loops() {
-    for i in 2..5 {
-        println!("234: {i}")
-    }
-    for i in 2..=4 {
-        println!("234: {i}")
-    }
+    // For loops.
+    let mut x = 0;
     for i in [2, 3, 4] {
-        println!("234: {i}")
+        x += i;
     }
+    assert_eq!(x, 2 + 3 + 4);
 
-    // `loop` for infinite loops.
+    x = 0;
+    for i in 2..5 {
+        x += i;
+    }
+    assert_eq!(x, 2 + 3 + 4);
+
+    x = 0;
+    for i in 2..=4 {
+        x += i;
+    }
+    assert_eq!(x, 2 + 3 + 4);
+
+    // While loops.
+    let mut x = 0;
+    let mut i = 2;
+    while i < 5 {
+        x += i;
+        i += 1;
+    }
+    assert_eq!(x, 2 + 3 + 4);
+
+    // `loop`s:
+    // -   similar to `while true`
+    // -   evaluates to a value (`for` and `while` don't).
     let mut i = 0;
-    let x = loop {
+    let mut x = 0;
+    let y = loop {
         i += 1;
         if i > 5 {
-            break i;
+            // i = 6
+            break i; // Entire `loop` evaluates to `i` (6).
         }
         if i % 2 == 0 {
             continue;
         }
-        println!("135: {i}");
+        x += i; // Sum of **odd** numbers.
     };
-    println!("x: {x}");
+    assert_eq!(x, 1 + 3 + 5);
+    assert_eq!(y, 6);
 
-    // Labeled loops:
-    'outer: for i in 1..10 {
-        for j in 2..4 {
-            println!("i = {i}, j = {j}");
+    // Labeled loops for easy `break` management:
+    let mut x = 0;
+    'outer: for _i in 1..10 {
+        for j in 2..8 {
+            x += j;
             break 'outer;
         }
     }
+    assert_eq!(x, 2); // Both loops exited after the first `x += j` execution.
 }
 
 // --------------------------------------------------------------------------------
@@ -126,7 +167,8 @@ fn macros() {
     // -   `unreachable!()`: If executed, will panic.
 
     let x = 3;
-    println!("{}", 5 + dbg!(x)); // 5 + 3 = 8.
+    assert_eq!(5 + dbg!(x), 5 + 3);
+    // ^ This also prints a debug info of `x` to stderr.
 }
 
 // --------------------------------------------------------------------------------
@@ -152,27 +194,34 @@ fn test_collatz_length() {
 
 fn arrays() {
     // Arrays have fixed lengths.
-    let mut a: [i8; 10] = [42; 10];
-    a[5] = 0;
-    println!("a: {a:?}");
+    let mut a: [i8; 5] = [42; 5];
+    a[3] = 0;
+    assert_eq!(a, [42, 42, 42, 0, 42]);
+    // Use the debug formatter `:?` to print arrays.
+    assert_eq!(format!("{a:?}"), "[42, 42, 42, 0, 42]");
 
     // Tuples are anonymous structs.
     let t = (7, true);
-    println!("{} is 7 and {} is true", t.0, t.1);
-    println!("t is {t:?}");
+    assert_eq!(t.0, 7);
+    assert_eq!(t.1, true);
+    // Use the debug formatter `:?` to print tuples.
+    assert_eq!(format!("{t:?}"), "(7, true)");
 
     // Tuple unpacking.
     let pair = (3, 5);
     let (left, right) = pair;
-    println!("left = {left}, right = {right}");
+    assert_eq!(left, 3);
+    assert_eq!(right, 5);
 
     let tuple = (3, 5, 7, 8);
     let (first, second, ..) = tuple;
-    println!("first = {first}, second = {second}");
+    assert_eq!(first, 3);
+    assert_eq!(second, 5);
 
     let arr = [3, 5, 7, 8];
     let [first, rest @ ..] = arr;
-    println!("first = {first}, rest = {rest:?}");
+    assert_eq!(first, 3);
+    assert_eq!(rest, [5, 7, 8]);
 }
 
 // --------------------------------------------------------------------------------
@@ -216,15 +265,18 @@ fn references() {
     let a = 'a';
     let mut b = 'b';
     let r: &char = &a;
-    println!("*r should be a: {}", *r);
+    assert_eq!(*r, a);
+    assert_eq!(*r, 'a');
     // r = &b;  // ERROR: `r` is immutable.
     let mut r: &char = &a;
     r = &b;
-    println!("*r should be b: {}", *r);
+    assert_eq!(*r, b);
+    assert_eq!(*r, 'b');
     // *r = 'x';  // ERROR: `r` is not a mutable/exclusive reference.
     let r = &mut b;
     *r = 'x';
-    println!("b should be x: {}", b);
+    assert_eq!(*r, 'x');
+    assert_eq!(b, 'x');
     // NOTE mutable references are exclusive.
     // So `b` and `*r` cannot both be able to mutate `b`.
     // The following code will produce an error:
@@ -238,16 +290,18 @@ fn references() {
 
 fn slices() {
     let mut a = [10, 20, 30, 40, 50, 60];
-    println!("a: {a:?}");
     let s: &mut [i32] = &mut a[2..4];
-    s[0] = 0;
-    println!("s: {s:?}, len: {}", s.len());
-    println!("a: {a:?}");
+    assert_eq!(s, [30, 40]);
+    s[0] = 888;
+    assert_eq!(s, [888, 40]);
+    assert_eq!(a, [10, 20, 888, 40, 50, 60]);
 
-    // The length of a slice can vary.
+    // The length of a slice can be a variable:
+    // recall how array lengths are fixed at compile time
+    // so it cannot be a variable.
     let end = 4;
     let s = &mut a[..end];
-    println!("s.len: {}", s.len());
+    assert_eq!(s.len(), 4);
 }
 
 // --------------------------------------------------------------------------------
@@ -263,18 +317,18 @@ fn strings() {
     //       // `&str` is a slice of bytes,
     //       // and a character can take multiple bytes in UTF-7.
 
+    let mut reversed = String::new();
     for chara in s.chars() {
-        println!("{chara}");
+        reversed.insert(0, chara);
     }
+    assert_eq!(reversed, "界世 olleh");
 
+    // Get the character after '世':
     let start = s
         .find("世") //
         .unwrap(); // Ignore errors if any.
     let s1 = &s[start..];
-    println!(
-        "the character following 世 is {}",
-        s1.chars().skip(1).next().unwrap()
-    );
+    assert_eq!(s1.chars().skip(1).next().unwrap(), '界');
 }
 
 // --------------------------------------------------------------------------------
@@ -323,19 +377,26 @@ fn defining_types() {
         name: String::from("Peter"),
         age: 27,
     };
-    println!("{} is {} years old", peter.name, peter.age);
+    assert_eq!(
+        format!("{} is {} years old", peter.name, peter.age),
+        "Peter is 27 years old"
+    );
 
     // Initializing using existing data.
     let jackie = Person {
         name: String::from("Jackie"),
         ..peter
     };
-    println!("{} is also {} years old", jackie.name, jackie.age);
+    assert_eq!(
+        format!("{} is also {} years old", jackie.name, jackie.age),
+        "Jackie is also 27 years old"
+    );
 
     // A "tuple struct".
     struct Point(i32, i32);
     let Point(left, right) = Point(17, 23);
-    println!("left: {left}, right: {right}");
+    assert_eq!(left, 17);
+    assert_eq!(right, 23);
     // Also useful for making units.
     struct Newton(f64);
     impl std::fmt::Display for Newton {
@@ -343,7 +404,10 @@ fn defining_types() {
             write!(f, "{} Newton", self.0)
         }
     }
-    println!("An apple is about {}.", Newton(1.0));
+    assert_eq!(
+        format!("An apple is about {}", Newton(1.0)),
+        "An apple is about 1 Newton"
+    );
 
     #[derive(Debug)]
     enum Direction {
@@ -357,22 +421,31 @@ fn defining_types() {
         Teleport { x: u32, y: u32 },
     }
     let m = PlayerMove::Run(Direction::Left);
-    println!("On this turn: {m:?}");
+    assert_eq!(format!("{m:?}"), "Run(Left)");
     let m = PlayerMove::Teleport { x: 1, y: 2 };
-    println!("On this turn: {m:?}");
+    assert_eq!(format!("{m:?}"), "Teleport { x: 1, y: 2 }");
 
     let moves = [
         PlayerMove::Pass,
-        PlayerMove::Run(Direction::Right),
         PlayerMove::Teleport { x: 1, y: 2 },
+        PlayerMove::Run(Direction::Right),
     ];
+    let mut move_history = String::new();
     for mov in moves {
         match mov {
-            PlayerMove::Pass => println!("Player passed"),
-            PlayerMove::Run(dir) => println!("Running to the {dir:?}"),
-            PlayerMove::Teleport { x, y } => println!("Teleporting to {x}, {y}"),
+            PlayerMove::Pass => move_history.push_str("Player passed\n"),
+            PlayerMove::Run(dir) => move_history.push_str(&format!("Running to the {dir:?}\n")),
+            PlayerMove::Teleport { x, y } => {
+                move_history.push_str(&format!("Teleporting to ({x}, {y})\n"))
+            }
         }
     }
+    assert_eq!(
+        move_history,
+        "Player passed\n\
+         Teleporting to (1, 2)\n\
+         Running to the Right\n"
+    );
 
     // Contstants are inlined.
     #[allow(unused)]
@@ -390,7 +463,8 @@ fn defining_types() {
 // --------------------------------------------------------------------------------
 // Exercise: Elevator Events.
 
-fn exer_elevator_events() {
+#[test]
+fn test_elevator_events() {
     #![allow(unused)]
     #[derive(Debug)]
     /// An event in the elevator system that the controller must react to.
@@ -454,6 +528,8 @@ fn exer_elevator_events() {
         }
     }
 
+    // Tests.
+
     println!(
         "A ground floor passenger has pressed the up button: {:?}",
         lobby_call_button_pressed(0, Direction::Up)
@@ -501,16 +577,17 @@ fn pattern_matching() {
         x: u32,
         y: (u32, u32),
     }
-    match (Foo { x: 1, y: (2, 3) }) {
-        Foo { x, y: (2, b) } => println!("x = {x}, y = (1, {b})"),
-        Foo { y, .. } => println!("y = {y:?}, other fields were ignored."),
-    }
+    assert_eq!(
+        match (Foo { x: 1, y: (2, 3) }) {
+            Foo { x, y: (2, b) } => format!("x = {x}, y = (2, {b})"),
+            Foo { y, .. } => format!("y = {y:?}, other fields were ignored."),
+        },
+        "x = 1, y = (2, 3)"
+    );
 
     #[derive(Debug)]
-    #[allow(unused)]
     struct Person {
         name: String,
-        age: u8,
     }
     #[allow(unused)]
     enum FamilyMember {
@@ -518,31 +595,39 @@ fn pattern_matching() {
         Mother(Person),
         Me(Person),
     }
-    match FamilyMember::Mother(Person {
-        name: String::from("Alex"),
-        age: 30,
-    }) {
-        FamilyMember::Father(father) => println!("father is {father:?}"),
-        FamilyMember::Mother(Person { name, .. }) => println!("{name} is the mother"),
-        _ => (),
-    }
+    assert_eq!(
+        match FamilyMember::Mother(Person {
+            name: String::from("Alex"),
+        }) {
+            FamilyMember::Father(father) => format!("father is {father:?}"),
+            FamilyMember::Mother(Person { name, .. }) => format!("{name} is the mother"),
+            _ => String::from("other case"),
+        },
+        "Alex is the mother"
+    );
 
     // Shadowing
     #[allow(unused)]
     let a = 2;
-    match 3 {
-        // This creates a new temporary variable `a`
-        // that matches any `i32`.
-        // This is NOT the `a` we declared above.
-        a => println!("3 matches a, a = {a}"),
-    }
+    assert_eq!(
+        match 3 {
+            // This creates a new temporary variable `a`
+            // that matches any `i32`.
+            // This is NOT the `a` we declared above.
+            a => format!("3 matches a, a = {a}"),
+        },
+        "3 matches a, a = 3"
+    );
     const A: i32 = 2;
-    match 3 {
-        // Constants are captured.
-        // (probably because constants are inlined everywhere?)
-        A => println!("3 does not match A which is 2"),
-        _ => println!("3 goes to default"),
-    }
+    assert_eq!(
+        match 3 {
+            // Constants are captured.
+            // (probably because constants are inlined everywhere?)
+            A => format!("3 does not match A which is 2"),
+            _ => format!("3 goes to default"),
+        },
+        "3 goes to default"
+    );
 }
 
 // --------------------------------------------------------------------------------
@@ -725,28 +810,46 @@ fn methods() {
             self.laps.push(lap);
         }
         // Shared borrowed read-only access.
-        fn print_laps(&self) {
-            println!("Recorded {} laps for {}:", self.laps.len(), self.name);
+        fn print_laps(&self) -> String {
+            let mut out = String::new();
+            out.push_str(&format!(
+                "Recorded {} laps for {}:\n",
+                self.laps.len(),
+                self.name
+            ));
             for (i, lap) in self.laps.iter().enumerate() {
-                println!("Lap {i}: {lap} sec");
+                out.push_str(&format!("Lap {i}: {lap} sec\n"));
             }
+            out
         }
         // Exclusive ownership of self.
         // Kinda like a destrctor,
         // unless this method then transfers the ownership away.
         // `mut self` works similarly except it allows modification to `self`.
-        fn finish(self) {
+        fn finish(self) -> String {
             let total: i32 = self.laps.iter().sum();
-            println!("Race {} is finished, total lap time: {}", self.name, total);
+            format!("Race {} is finished, total lap time: {}", self.name, total)
         }
     }
 
     let mut race = Race::new("Monaco Grand Prix");
     race.add_lap(70);
-    race.print_laps();
+    assert_eq!(
+        race.print_laps(),
+        "Recorded 1 laps for Monaco Grand Prix:\n\
+         Lap 0: 70 sec\n"
+    );
     race.add_lap(68);
-    race.print_laps();
-    race.finish();
+    assert_eq!(
+        race.print_laps(),
+        "Recorded 2 laps for Monaco Grand Prix:\n\
+         Lap 0: 70 sec\n\
+         Lap 1: 68 sec\n"
+    );
+    assert_eq!(
+        race.finish(),
+        "Race Monaco Grand Prix is finished, total lap time: 138"
+    );
     // race.add_lap(42);  // ERROR: `Race::finish` takes the ownership away.
 }
 
@@ -758,9 +861,9 @@ fn traits() {
         /// Return a sentence from this pet.
         fn talk(&self) -> String;
 
-        /// Print a string to the terminal greeting this pet.
-        fn greet(&self) {
-            println!("Oh you're a cutie! What's your name? {}", self.talk());
+        /// Return a string to the terminal greeting this pet.
+        fn greet(&self) -> String {
+            format!("Oh you're a cutie! What's your name? {}", self.talk())
         }
     }
     struct Dog {
@@ -775,7 +878,10 @@ fn traits() {
     let fido = Dog {
         name: String::from("Fido"),
     };
-    fido.greet();
+    assert_eq!(
+        fido.greet(),
+        "Oh you're a cutie! What's your name? Woof, my name is Fido!"
+    );
 
     // We can use associated types
     // to allow the implementer to choose the type of the output,
@@ -797,7 +903,10 @@ fn traits() {
         }
     }
 
-    println!("{:?}", Meters(10).multiply(&Meters(20)));
+    assert_eq!(
+        format!("{:?}", Meters(10).multiply(&Meters(20))),
+        "MetersSquared(200)"
+    );
 
     //
     #[derive(Debug, Clone, Default)]
@@ -811,7 +920,10 @@ fn traits() {
     let mut p2 = p1.clone(); // Provided by the `Clone` trait.
     p2.name = String::from("EldurScrollz");
     // `Debug` trait adds support for printing with `{:?}`.
-    println!("{:?} vs {:?}", p1, p2);
+    assert_eq!(
+        format!("{:?} vs {:?}", p1, p2),
+        r#"Player { name: "", strength: 0, hit_points: 0 } vs Player { name: "EldurScrollz", strength: 0, hit_points: 0 }"#
+    );
 }
 
 // --------------------------------------------------------------------------------
@@ -977,6 +1089,7 @@ impl LessThan for Citation {
     }
 }
 
+#[allow(unused)]
 fn min<T: LessThan + Clone>(a: T, b: T) -> T {
     if a.less_than(&b) {
         a
@@ -1018,7 +1131,6 @@ fn main() {
     slices();
     strings();
     defining_types();
-    exer_elevator_events();
     pattern_matching();
     let_control_flow();
     methods();
