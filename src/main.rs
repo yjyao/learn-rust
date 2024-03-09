@@ -71,25 +71,28 @@ fn values() {
 }
 
 // --------------------------------------------------------------------------------
-// Exercise: Fibonacci.
 
-#[allow(unused)]
-fn fib(n: u32) -> u32 {
-    if n <= 2 {
-        1
-    } else {
-        fib(n - 1) + fib(n - 2)
+#[cfg(test)]
+mod exercise_fibonacci {
+    #![allow(unused)]
+
+    fn fib(n: u32) -> u32 {
+        if n <= 2 {
+            1
+        } else {
+            fib(n - 1) + fib(n - 2)
+        }
+        // Returns the last expression in a block.
+        // This is more idiomatic than using return whereever possible.
+        // Note that the line does NOT end with a `;`:
+        // That will implicitly add a null expression `()`
+        // messing up the return value.
     }
-    // Returns the last expression in a block.
-    // This is more idiomatic than using return whereever possible.
-    // Note that the line does NOT end with a `;`:
-    // That will implicitly add a null expression `()`
-    // messing up the return value.
-}
 
-#[test]
-fn test_fib() {
-    assert_eq!(fib(20), 6765);
+    #[test]
+    fn test_fib() {
+        assert_eq!(fib(20), 6765);
+    }
 }
 
 // --------------------------------------------------------------------------------
@@ -172,22 +175,25 @@ fn macros() {
 }
 
 // --------------------------------------------------------------------------------
-// Exercise: Collatz Length.
 
-// Determine the length of the collatz sequence beginning at `n`.
-#[allow(unused)]
-fn collatz_length(mut n: i32) -> u32 {
-    let mut i = 1;
-    while n != 1 {
-        n = if n % 2 == 0 { n / 2 } else { 3 * n + 1 };
-        i += 1;
+#[cfg(test)]
+mod exercise_collatz_length {
+    #![allow(unused)]
+
+    // Determine the length of the collatz sequence beginning at `n`.
+    fn collatz_length(mut n: i32) -> u32 {
+        let mut i = 1;
+        while n != 1 {
+            n = if n % 2 == 0 { n / 2 } else { 3 * n + 1 };
+            i += 1;
+        }
+        i
     }
-    i
-}
 
-#[test]
-fn test_collatz_length() {
-    assert_eq!(collatz_length(11), 15);
+    #[test]
+    fn test_collatz_length() {
+        assert_eq!(collatz_length(11), 15);
+    }
 }
 
 // --------------------------------------------------------------------------------
@@ -225,35 +231,38 @@ fn arrays() {
 }
 
 // --------------------------------------------------------------------------------
-// Exercise: Transpose.
 
-#[allow(unused)]
-fn transpose(matrix: [[i32; 3]; 3]) -> [[i32; 3]; 3] {
-    let mut res = matrix;
-    for (i, row) in matrix.iter().enumerate() {
-        for (j, cell) in row.iter().enumerate() {
-            res[j][i] = *cell;
+#[cfg(test)]
+mod exercise_transpose {
+    #![allow(unused)]
+
+    fn transpose(matrix: [[i32; 3]; 3]) -> [[i32; 3]; 3] {
+        let mut res = matrix;
+        for (i, row) in matrix.iter().enumerate() {
+            for (j, cell) in row.iter().enumerate() {
+                res[j][i] = *cell;
+            }
         }
+        res
     }
-    res
-}
 
-#[test]
-fn test_transpose() {
-    let matrix = [
-        [101, 102, 103], //
-        [201, 202, 203],
-        [301, 302, 303],
-    ];
-    let transposed = transpose(matrix);
-    assert_eq!(
-        transposed,
-        [
-            [101, 201, 301], //
-            [102, 202, 302],
-            [103, 203, 303],
-        ]
-    );
+    #[test]
+    fn test_transpose() {
+        let matrix = [
+            [101, 102, 103], //
+            [201, 202, 203],
+            [301, 302, 303],
+        ];
+        let transposed = transpose(matrix);
+        assert_eq!(
+            transposed,
+            [
+                [101, 201, 301], //
+                [102, 202, 302],
+                [103, 203, 303],
+            ]
+        );
+    }
 }
 
 // --------------------------------------------------------------------------------
@@ -331,38 +340,40 @@ fn strings() {
 }
 
 // --------------------------------------------------------------------------------
-// Exercise: Geometry.
 
-// Calculate the magnitude of a vector by summing the squares of its coordinates
-// and taking the square root. Use the `sqrt()` method to calculate the square
-// root, like `v.sqrt()`.
-#[allow(unused)]
-fn magnitude(vector: &[f64]) -> f64 {
-    let mut res = 0.0;
-    for n in vector {
-        res += n * n;
+#[cfg(test)]
+mod exercise_geometry {
+    #![allow(unused)]
+
+    // Calculate the magnitude of a vector by summing the squares of its coordinates
+    // and taking the square root. Use the `sqrt()` method to calculate the square
+    // root, like `v.sqrt()`.
+    fn magnitude(vector: &[f64]) -> f64 {
+        let mut res = 0.0;
+        for n in vector {
+            res += n * n;
+        }
+        res.sqrt()
     }
-    res.sqrt()
-}
 
-// Normalize a vector by calculating its magnitude and dividing all of its
-// coordinates by that magnitude.
-#[allow(unused)]
-fn normalize(vector: &mut [f64]) {
-    let mag = magnitude(vector);
-    for n in vector {
-        *n /= mag;
+    // Normalize a vector by calculating its magnitude and dividing all of its
+    // coordinates by that magnitude.
+    fn normalize(vector: &mut [f64]) {
+        let mag = magnitude(vector);
+        for n in vector {
+            *n /= mag;
+        }
     }
-}
 
-#[test]
-fn test_geometry() {
-    assert_eq!(magnitude(&[0.0, 1.0, 0.0]), 1.0);
+    #[test]
+    fn test_geometry() {
+        assert_eq!(magnitude(&[0.0, 1.0, 0.0]), 1.0);
 
-    let mut v = [1.0, 2.0, 9.0];
-    assert_float_relative_eq!(magnitude(&v), 9.2, /*tolarence=*/ 0.1);
-    normalize(&mut v);
-    assert_float_relative_eq!(magnitude(&v), 1.0);
+        let mut v = [1.0, 2.0, 9.0];
+        assert_float_relative_eq!(magnitude(&v), 9.2, /*tolarence=*/ 0.1);
+        normalize(&mut v);
+        assert_float_relative_eq!(magnitude(&v), 1.0);
+    }
 }
 
 // --------------------------------------------------------------------------------
@@ -455,11 +466,11 @@ fn defining_types() {
 }
 
 // --------------------------------------------------------------------------------
-// Exercise: Elevator Events.
 
-#[test]
-fn test_elevator_events() {
+#[cfg(test)]
+mod exercise_elevator_events {
     #![allow(unused)]
+
     #[derive(Debug)]
     /// An event in the elevator system that the controller must react to.
     enum Event {
@@ -515,23 +526,24 @@ fn test_elevator_events() {
         Event::CarButton { floor: floor.into() }
     }
 
-    // Tests.
-
-    println!(
-        "A ground floor passenger has pressed the up button: {:?}",
-        lobby_call_button_pressed(0, Direction::Up)
-    );
-    println!(
-        "The car has arrived on the ground floor: {:?}",
-        car_arrived(0)
-    );
-    println!("The car door opened: {:?}", car_door_opened());
-    println!(
-        "A passenger has pressed the 3rd floor button: {:?}",
-        car_floor_button_pressed(3)
-    );
-    println!("The car door closed: {:?}", car_door_closed());
-    println!("The car has arrived on the 3rd floor: {:?}", car_arrived(3));
+    #[test]
+    fn test_elevator_events() {
+        println!(
+            "A ground floor passenger has pressed the up button: {:?}",
+            lobby_call_button_pressed(0, Direction::Up)
+        );
+        println!(
+            "The car has arrived on the ground floor: {:?}",
+            car_arrived(0)
+        );
+        println!("The car door opened: {:?}", car_door_opened());
+        println!(
+            "A passenger has pressed the 3rd floor button: {:?}",
+            car_floor_button_pressed(3)
+        );
+        println!("The car door closed: {:?}", car_door_closed());
+        println!("The car has arrived on the 3rd floor: {:?}", car_arrived(3));
+    }
 }
 
 // --------------------------------------------------------------------------------
@@ -662,114 +674,115 @@ fn let_control_flow() {
 }
 
 // --------------------------------------------------------------------------------
-// Exercise: Expr Eval.
 
-/// An operation to perform on two subexpressions.
-#[derive(Debug)]
-#[allow(unused)]
-enum Operation {
-    Add,
-    Sub,
-    Mul,
-    Div,
-}
+#[cfg(test)]
+mod exercise_expression_evaluation {
+    #![allow(unused)]
 
-/// An expression, in tree form.
-#[derive(Debug)]
-#[allow(unused)]
-enum Expression {
-    /// A binary operation on two subexpressions.
-    Op {
-        op: Operation,
-        left: Box<Expression>,
-        right: Box<Expression>,
-    },
+    /// An operation to perform on two subexpressions.
+    #[derive(Debug)]
+    enum Operation {
+        Add,
+        Sub,
+        Mul,
+        Div,
+    }
 
-    /// A literal value.
-    Value(i64),
-}
+    /// An expression, in tree form.
+    #[derive(Debug)]
+    enum Expression {
+        /// A binary operation on two subexpressions.
+        Op {
+            op: Operation,
+            left: Box<Expression>,
+            right: Box<Expression>,
+        },
 
-#[allow(unused)]
-fn eval(e: Expression) -> Result<i64, String> {
-    let (op, left, right) = match e {
-        Expression::Value(v) => return Ok(v),
-        Expression::Op { op, left, right } => (op, left, right),
-    };
-    let left = match eval(*left) {
-        Ok(v) => v,
-        err @ Err(_) => return err,
-    };
-    let right = match eval(*right) {
-        Ok(v) => v,
-        err @ Err(_) => return err,
-    };
-    Ok(match op {
-        Operation::Add => left + right,
-        Operation::Sub => left - right,
-        Operation::Mul => left * right,
-        Operation::Div => {
-            if right != 0 {
-                left / right
-            } else {
-                return Err(String::from("division by zero"));
+        /// A literal value.
+        Value(i64),
+    }
+
+    fn eval(e: Expression) -> Result<i64, String> {
+        let (op, left, right) = match e {
+            Expression::Value(v) => return Ok(v),
+            Expression::Op { op, left, right } => (op, left, right),
+        };
+        let left = match eval(*left) {
+            Ok(v) => v,
+            err @ Err(_) => return err,
+        };
+        let right = match eval(*right) {
+            Ok(v) => v,
+            err @ Err(_) => return err,
+        };
+        Ok(match op {
+            Operation::Add => left + right,
+            Operation::Sub => left - right,
+            Operation::Mul => left * right,
+            Operation::Div => {
+                if right != 0 {
+                    left / right
+                } else {
+                    return Err(String::from("division by zero"));
+                }
             }
-        }
-    })
-}
+        })
+    }
 
-#[test]
-fn test_value() {
-    assert_eq!(eval(Expression::Value(19)), Ok(19));
-}
+    #[test]
+    fn test_value() {
+        assert_eq!(eval(Expression::Value(19)), Ok(19));
+    }
 
-#[test]
-fn test_sum() {
-    assert_eq!(
-        eval(Expression::Op {
-            op: Operation::Add,
+    #[test]
+    fn test_sum() {
+        assert_eq!(
+            eval(Expression::Op {
+                op: Operation::Add,
+                left: Box::new(Expression::Value(10)),
+                right: Box::new(Expression::Value(20)),
+            }),
+            Ok(30)
+        );
+    }
+
+    #[test]
+    fn test_recursion() {
+        let term1 = Expression::Op {
+            op: Operation::Mul,
             left: Box::new(Expression::Value(10)),
-            right: Box::new(Expression::Value(20)),
-        }),
-        Ok(30)
-    );
-}
+            right: Box::new(Expression::Value(9)),
+        };
+        let term2 = Expression::Op {
+            op: Operation::Mul,
+            left: Box::new(Expression::Op {
+                op: Operation::Sub,
+                left: Box::new(Expression::Value(3)),
+                right: Box::new(Expression::Value(4)),
+            }),
+            right: Box::new(Expression::Value(5)),
+        };
+        assert_eq!(
+            eval(Expression::Op {
+                op: Operation::Add,
+                left: Box::new(term1),
+                right: Box::new(term2)
+            }),
+            Ok(85)
+        );
+    }
 
-#[test]
-fn test_recursion() {
-    let term1 = Expression::Op {
-        op: Operation::Mul,
-        left: Box::new(Expression::Value(10)),
-        right: Box::new(Expression::Value(9)),
-    };
-    let term2 = Expression::Op {
-        op: Operation::Mul,
-        left: Box::new(Expression::Op {
-            op: Operation::Sub,
-            left: Box::new(Expression::Value(3)),
-            right: Box::new(Expression::Value(4)),
-        }),
-        right: Box::new(Expression::Value(5)),
-    };
-    assert_eq!(
-        eval(Expression::Op {
-            op: Operation::Add,
-            left: Box::new(term1),
-            right: Box::new(term2)
-        }),
-        Ok(85)
-    );
-}
-
-#[test]
-fn test_error() {
-    assert_eq!(
-        eval(Expression::Op {
-            op: Operation::Div,
-            left: Box::new(Expression::Value(99)),
-            right: Box::new(Expression::Value(0)),
-        }),
-        Err(String::from("division by zero"))
-    );
+    #[test]
+    fn test_error() {
+        assert_eq!(
+            eval(Expression::Op {
+                op: Operation::Div,
+                left: Box::new(Expression::Value(99)),
+                right: Box::new(Expression::Value(0)),
+            }),
+            Err(String::from("division by zero"))
+        );
+    }
 }
 
 // --------------------------------------------------------------------------------
@@ -907,49 +920,53 @@ fn traits() {
 }
 
 // --------------------------------------------------------------------------------
-// Exercise: Generic Logger
 
-pub trait Logger {
-    /// Log a message at the given verbosity level.
-    fn log(&mut self, verbosity: u8, message: impl std::fmt::Display);
-}
+#[cfg(test)]
+mod exercise_generic_logger {
+    #![allow(unused)]
 
-#[derive(Default)]
-struct StringLogger {
-    buffer: String,
-}
-
-impl Logger for StringLogger {
-    fn log(&mut self, verbosity: u8, message: impl std::fmt::Display) {
-        self.buffer
-            .push_str(&format!("verbosity={verbosity}: {message}\n"));
+    pub trait Logger {
+        /// Log a message at the given verbosity level.
+        fn log(&mut self, verbosity: u8, message: impl std::fmt::Display);
     }
-}
 
-/// Only log messages up to the given verbosity level.
-struct VerbosityFilter<L: Logger> {
-    max_verbosity: u8,
-    inner: L,
-}
+    #[derive(Default)]
+    struct StringLogger {
+        buffer: String,
+    }
 
-impl<L: Logger> Logger for VerbosityFilter<L> {
-    fn log(&mut self, verbosity: u8, message: impl std::fmt::Display) {
-        if verbosity < self.max_verbosity {
-            self.inner.log(verbosity, message);
+    impl Logger for StringLogger {
+        fn log(&mut self, verbosity: u8, message: impl std::fmt::Display) {
+            self.buffer
+                .push_str(&format!("verbosity={verbosity}: {message}\n"));
         }
     }
-}
 
-#[test]
-fn test_verbosity_filter() {
-    fn do_things(logger: &mut impl Logger) {
-        logger.log(5, "FYI");
-        logger.log(2, "Uhoh");
+    /// Only log messages up to the given verbosity level.
+    struct VerbosityFilter<L: Logger> {
+        max_verbosity: u8,
+        inner: L,
     }
 
-    let mut logger = VerbosityFilter { max_verbosity: 3, inner: StringLogger::default() };
-    do_things(&mut logger);
-    assert_eq!(logger.inner.buffer, String::from("verbosity=2: Uhoh\n"));
+    impl<L: Logger> Logger for VerbosityFilter<L> {
+        fn log(&mut self, verbosity: u8, message: impl std::fmt::Display) {
+            if verbosity < self.max_verbosity {
+                self.inner.log(verbosity, message);
+            }
+        }
+    }
+
+    #[test]
+    fn test_verbosity_filter() {
+        fn do_things(logger: &mut impl Logger) {
+            logger.log(5, "FYI");
+            logger.log(2, "Uhoh");
+        }
+
+        let mut logger = VerbosityFilter { max_verbosity: 3, inner: StringLogger::default() };
+        do_things(&mut logger);
+        assert_eq!(logger.inner.buffer, String::from("verbosity=2: Uhoh\n"));
+    }
 }
 
 // --------------------------------------------------------------------------------
@@ -1034,48 +1051,51 @@ fn generics() {
 }
 
 // --------------------------------------------------------------------------------
-// Exercise: Generic `min`
 
-trait LessThan {
-    /// Return `true` if `self` is less than `other`.
-    fn less_than(&self, other: &Self) -> bool;
-}
+#[cfg(test)]
+mod exercise_generic_min {
+    #![allow(unused)]
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-struct Citation {
-    author: &'static str,
-    year: u32,
-}
+    trait LessThan {
+        /// Return `true` if `self` is less than `other`.
+        fn less_than(&self, other: &Self) -> bool;
+    }
 
-impl LessThan for Citation {
-    fn less_than(&self, other: &Self) -> bool {
-        if self.author < other.author {
-            true
-        } else if self.author > other.author {
-            false
-        } else {
-            self.year < other.year
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    struct Citation {
+        author: &'static str,
+        year: u32,
+    }
+
+    impl LessThan for Citation {
+        fn less_than(&self, other: &Self) -> bool {
+            if self.author < other.author {
+                true
+            } else if self.author > other.author {
+                false
+            } else {
+                self.year < other.year
+            }
         }
     }
-}
 
-#[allow(unused)]
-fn min<T: LessThan + Clone>(a: T, b: T) -> T {
-    if a.less_than(&b) {
-        a
-    } else {
-        b
+    fn min<T: LessThan + Clone>(a: T, b: T) -> T {
+        if a.less_than(&b) {
+            a
+        } else {
+            b
+        }
     }
-}
 
-#[test]
-fn test_min() {
-    let cit1 = Citation { author: "Shapiro", year: 2011 };
-    let cit2 = Citation { author: "Baumann", year: 2010 };
-    let cit3 = Citation { author: "Baumann", year: 2019 };
-    assert_eq!(min(cit1, cit2), cit2);
-    assert_eq!(min(cit2, cit3), cit2);
-    assert_eq!(min(cit1, cit3), cit3);
+    #[test]
+    fn test_min() {
+        let cit1 = Citation { author: "Shapiro", year: 2011 };
+        let cit2 = Citation { author: "Baumann", year: 2010 };
+        let cit3 = Citation { author: "Baumann", year: 2019 };
+        assert_eq!(min(cit1, cit2), cit2);
+        assert_eq!(min(cit2, cit3), cit2);
+        assert_eq!(min(cit1, cit3), cit3);
+    }
 }
 
 // --------------------------------------------------------------------------------
@@ -1239,10 +1259,11 @@ fn std_types() {
 }
 
 // --------------------------------------------------------------------------------
-// Exercise: Counter
 
-#[test]
-fn test_counter() {
+#[cfg(test)]
+mod exercise_counter {
+    #![allow(unused)]
+
     use std::collections::HashMap;
     use std::hash::Hash;
 
@@ -1268,35 +1289,38 @@ fn test_counter() {
         }
     }
 
-    let mut ctr = Counter::new();
-    ctr.count(13);
-    ctr.count(14);
-    ctr.count(16);
-    ctr.count(14);
-    ctr.count(14);
-    ctr.count(11);
+    #[test]
+    fn test_counter() {
+        let mut ctr = Counter::new();
+        ctr.count(13);
+        ctr.count(14);
+        ctr.count(16);
+        ctr.count(14);
+        ctr.count(14);
+        ctr.count(11);
 
-    assert_eq!(ctr.times_seen(10), 0);
-    assert_eq!(ctr.times_seen(11), 1);
-    assert_eq!(ctr.times_seen(12), 0);
-    assert_eq!(ctr.times_seen(13), 1);
-    assert_eq!(ctr.times_seen(14), 3);
-    assert_eq!(ctr.times_seen(15), 0);
-    assert_eq!(ctr.times_seen(16), 1);
-    assert_eq!(ctr.times_seen(17), 0);
+        assert_eq!(ctr.times_seen(10), 0);
+        assert_eq!(ctr.times_seen(11), 1);
+        assert_eq!(ctr.times_seen(12), 0);
+        assert_eq!(ctr.times_seen(13), 1);
+        assert_eq!(ctr.times_seen(14), 3);
+        assert_eq!(ctr.times_seen(15), 0);
+        assert_eq!(ctr.times_seen(16), 1);
+        assert_eq!(ctr.times_seen(17), 0);
 
-    let mut strctr = Counter::new();
-    strctr.count("apple");
-    strctr.count("orange");
-    strctr.count("apple");
-    assert_eq!(strctr.times_seen("apple"), 2);
-    assert_eq!(strctr.times_seen("orange"), 1);
-    assert_eq!(strctr.times_seen("banana"), 0);
+        let mut strctr = Counter::new();
+        strctr.count("apple");
+        strctr.count("orange");
+        strctr.count("apple");
+        assert_eq!(strctr.times_seen("apple"), 2);
+        assert_eq!(strctr.times_seen("orange"), 1);
+        assert_eq!(strctr.times_seen("banana"), 0);
 
-    // Make sure `times_seen` does not count.
-    assert_eq!(strctr.times_seen("apple"), 2);
-    assert_eq!(strctr.times_seen("orange"), 1);
-    assert_eq!(strctr.times_seen("banana"), 0);
+        // Make sure `times_seen` does not count.
+        assert_eq!(strctr.times_seen("apple"), 2);
+        assert_eq!(strctr.times_seen("orange"), 1);
+        assert_eq!(strctr.times_seen("banana"), 0);
+    }
 }
 
 // --------------------------------------------------------------------------------
@@ -1555,18 +1579,11 @@ fn closures() {
 }
 
 // --------------------------------------------------------------------------------
-// Exercise: ROT13
-
-// fn main() {
-//     let mut rot =
-//         RotDecoder { input: "Gb trg gb gur bgure fvqr!".as_bytes(), rot: 13 };
-//     let mut result = String::new();
-//     rot.read_to_string(&mut result).unwrap();
-//     println!("{}", result);
-// }
 
 #[cfg(test)]
-mod test {
+mod exercise_rot13 {
+    #![allow(unused)]
+
     use std::io::Read;
 
     struct RotDecoder<R: Read> {
