@@ -1580,7 +1580,9 @@ mod test {
         fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
             let size = self.input.read(buf)?;
             for byte in &mut buf[..size] {
-                if !byte.is_ascii_alphabetic() { continue }
+                if !byte.is_ascii_alphabetic() {
+                    continue;
+                }
                 let base = if byte.is_ascii_uppercase() { 'A' } else { 'a' } as u8;
                 *byte = base + (*byte - base + self.rot) % 26;
             }
@@ -1653,7 +1655,8 @@ fn memory_mgt() {
     {
         let i = 1;
         assert_eq!(i, 1);
-    }  // `i` is dropped here and the value is freed.
+    } // `i` is dropped here and the value is freed.
+
     // assert_eq!(i, 1);  // ERROR: `i` is undefined.
 
     // Every value has precisely one owner at any time.
@@ -1664,15 +1667,17 @@ fn memory_mgt() {
     // assert_eq!(s1, "Hello");  // ERROR: `s1` no longer owns the value.
 
     // Passing a value to a function also transfers ownership.
-    fn consume(_: String) { () }
+    fn consume(_: String) {
+        ()
+    }
     let name = "Alice".to_string();
     assert_eq!(name, "Alice");
     consume(name);
     // assert_eq!(name, "Alice");  // ERROR: Ownership transferred from `name`
     //                             // to the function parameter.
     let name = "Bob".to_string();
-    consume(name.clone());  // Need to pass by copy explicitly.
-    assert_eq!(name, "Bob");  // Ok.
+    consume(name.clone()); // Need to pass by copy explicitly.
+    assert_eq!(name, "Bob"); // Ok.
 
     // In C++:
     // ```cc
@@ -1704,7 +1709,7 @@ fn memory_mgt() {
     // Implementing `Copy` trait lets you copy implicitly.
     let x = 31;
     let y = x;
-    assert_eq!(x, y);  // Ok. `y` is a copy.
+    assert_eq!(x, y); // Ok. `y` is a copy.
 
     // NOTE "Copy" and "clone" are different:
     //
